@@ -1,33 +1,90 @@
+<div align="center">
+
 # CineGram
 
-**CineGram** 是 [CineVec](https://github.com/Chillwinner/vec) 的独立 FastAPI Telegram 资源对接插件，负责对接 Telegram 频道/群组（MTProto 实时监听 + 断点历史回溯 + 按规则过滤 + Web 浏览勾选导入 + 定时存活巡检）与可选 Telegram Bot（转发入库 + 搜文/搜图/搜标签），全程通过 CineVec `/api/v1` + Bearer API Token 适配本体。
+### Standalone FastAPI Telegram Bridge for [CineVec](https://github.com/Chillwinner/Cinevec)
 
-## 快速开始
+**Telegram is an infinite cloud drive — until you try to find that one 10-second clip from six months ago.**
+CineGram streams photos and up-to-4GB videos from your Telegram channels & groups into **CineVec** with **Zero-Retention**, so you can search them semantically in 3D and jump straight back to the original `t.me` message.
 
-1. 安装依赖（已预置 `.venv`）：
+**English** · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Español](README.es.md)
+
+[![CineVec Core](https://img.shields.io/badge/Core-CineVec%20%2Fapi%2Fv1-E06A3E?style=for-the-badge)](https://github.com/Chillwinner/Cinevec)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Lightweight%20Web%20UI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Telethon](https://img.shields.io/badge/MTProto-Telethon%20(Up%20to%204GB)-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://docs.telethon.dev/)
+[![Bot API](https://img.shields.io/badge/Telegram-Optional%20Bot%20Search-111111?style=for-the-badge&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
+
+[What It Does](#what-cinegram-does) • [Why CineGram](#why-cinegram-beats-typical-telegram-archivers) • [Companion Core](#companion-core-cinevec) • [Extend & Swap](#extending-or-swapping-components) • [Quickstart](#quickstart-deployment)
+
+</div>
+
+---
+
+## What CineGram Does
+
+**CineGram** is an independent FastAPI microservice that connects Telegram channels, groups, and private chats to **[CineVec](https://github.com/Chillwinner/Cinevec)** purely via `/api/v1/*` + Bearer API Token — zero database coupling, zero bloat.
+
+- **4 Independent Modes (Nothing Mandatory)**: Run **Web-only**, **Bot-only**, **MTProto-only**, or **Dual** mode. Neither a Bot token nor a Telegram user login is forced on you — configure or hot-toggle either anytime inside the built-in Web Console (`http://127.0.0.1:8018/`).
+- **Selective Ingestion**: Combine per-group **filter rules** (media type, min/max MB, video duration, include/exclude keywords, lookback days) with a **Web thumbnail browser** that lets you cherry-pick individual messages without ever downloading unchecked videos.
+- **Built-In Semantic & Lexical Search Console**: Search CineVec by visual meaning or fuzzy tag/caption match right inside CineGram's Web UI or via optional Telegram Bot (`/s`, `/m`, or drop an image).
+
+---
+
+## Why CineGram Beats Typical Telegram Archivers
+
+| Feature | Typical Telegram Dumpers | CineGram |
+| :--- | :--- | :--- |
+| **Disk Usage** | Downloads terabytes of MP4s forever until your SSD cries. | **Zero-Retention + Double Backpressure**: streams media to CineVec (`store_original=false`), deletes local temp files immediately, and auto-pauses when disk free space or CineVec's preprocess queue hits your threshold. |
+| **Multi-File Albums** | Only the 1st photo gets the caption; items 2–10 lose all context and `#tags`. | **Media Group Caption & `#tag` Inheritance**: automatically propagates the album's caption and `#hashtags` to every sibling file — even when cherry-picking a single photo! |
+| **Dead Links & Private Shifts** | Stale links rot silently when a group renames or goes private. | **Scheduled Availability Watcher**: detects `@username` renames, public→private transitions (auto-migrating links to `t.me/c/...`), kicked chats, and deleted messages (`lifecycle="source_invalid"`). |
+| **Duplicate Protection** | Clicking backfill twice creates duplicate junk. | **4-Layer Dedup**: concurrent backfill lock + cursor resume + local `(chat_id, message_id)` & `file_unique_id` + remote CineVec `ref_id` lookup. |
+| **No Auto-Spam** | Scrapes every chat in your account on startup. | **Opt-In Only**: added groups default to `disabled`; nothing is listened to until you explicitly enable it. |
+
+---
+
+## Companion Core: CineVec
+
+CineGram is the official Telegram plugin for **[CineVec](https://github.com/Chillwinner/Cinevec)** — the self-hosted multimodal media search engine with a Three.js 3D Screening Room, EmbeddingGemma 2 / Chinese-CLIP, and Milvus Lite / REST v2.
+
+- **Main Repository**: [https://github.com/Chillwinner/Cinevec](https://github.com/Chillwinner/Cinevec)
+- **Integration Contract**: Strictly HTTP `/api/v1/*` with a Bearer API token created in CineVec **Settings → Plugin API Tokens**.
+
+---
+
+## Extending or Swapping Components
+
+Do you need to write code to customize CineGram? **Usually no — and when you do, the boundaries are clean:**
+
+### 1. Zero-Code Switches (`.env` or Web Console)
+- Switch between **Bot API**, **MTProto (Telethon)**, or **Both** with hot-reload from `http://127.0.0.1:8018/`.
+- Toggle **Zero-Retention (`store_original=false`)** vs **S3 Hosted (`store_original=true`)** or automatic **Private Backup Channel** per group.
+- Adjust disk/queue backpressure, filter rules, and auto-exclude retention days at runtime.
+
+### 2. Swapping the Telegram Library or Target Backend
+- **Replace Telethon with Pyrogram/Kurigram or a custom probe**: implement the 2-method `TelegramInspector` `Protocol` in [`src/tg_plugin/models.py`](src/tg_plugin/models.py) (`probe_chat`, `probe_messages`) and pass it to `create_plugin_app(..., inspector=...)` in [`src/tg_plugin/app.py`](src/tg_plugin/app.py).
+- **Point to another retrieval backend**: swap or subclass `CineVecClient` in [`src/tg_plugin/cinevec_client.py`](src/tg_plugin/cinevec_client.py) and inject it via `create_plugin_app(..., cinevec=...)` — deduplication, album propagation, backpressure, and the Web UI keep working untouched.
+
+---
+
+## Quickstart Deployment
+
 ```bash
-cd telegram-plugin
-.venv/bin/pip install -e .
+# 1. Clone and install (Python 3.9+)
+git clone https://github.com/Chillwinner/CineGram.git
+cd CineGram
+python -m venv .venv
+source .venv/bin/activate        # Windows PowerShell: .\.venv\Scripts\Activate.ps1
+pip install -e .
+
+# 2. Start the standalone FastAPI service & lightweight Web Console (port 8018)
+python -m tg_plugin serve
 ```
 
-2. 启动服务（**无需预先配置 Bot 或 Telegram 账号**即可启动 Web 管理台）：
-```bash
-.venv/bin/python -m tg_plugin serve
-# 浏览器打开轻量 Web 管理台：http://127.0.0.1:8018/
-# Swagger API 文档：http://127.0.0.1:8018/docs
-```
-
-3. 按需配置（在 Web 管理台「凭据与策略配置」或 `.env` 中填入，均为可选）：
-- **CineVec 连接**：填入 `CINEVEC_API_TOKEN`（由 CineVec 前端「设置 -> API Token」生成）。
-- **Telegram Bot（可选）**：填入 `TG_BOT_TOKEN` 后保存即可热启用，支持转发入库、群/频道同步与聊天搜图搜文。
-- **MTProto 用户号（可选）**：仅在需要历史存量回溯或 >20MB～4GB 大视频时填入 `TG_API_ID` / `TG_API_HASH`，并运行一次 `.venv/bin/python -m tg_plugin login`。
-
-## 核心特性
-
-- **Zero-Retention（默认 `store_original=false`）**：CineVec 仅保存预览图、封面与向量，并在 `source_url` 与 `ref.params` 中保留 `https://t.me/...` 原消息跳转链接与 `file_id`。
-- **双重防堆积背压**：配合 CineVec 双通道调度（预处理完成后立即删原片），插件侧还会实时检查磁盘余量（`DISK_MIN_FREE_GB`）与预处理在途数量（`MAX_PREPROCESS_INFLIGHT`），满负荷时自动暂停拉取大视频。
-- **定时存活巡检**：
-  - 公开群改名 `@username` → 自动更新 `source_url`。
-  - 公开群改私密（账号仍在群内）→ 自动切换为 `https://t.me/c/<id>/<msg_id>` 并记录告警。
-  - 被踢出 / 群不可访问 / 单条消息被删 → 标为 `lifecycle="source_invalid"`（可配置到期自动 `exclude`）。
-- **可选 Bot 交互**：配置 `TG_BOT_TOKEN` 和 `TG_ALLOWED_USER_IDS` 后支持转发入库进度实时编辑、`/s` 搜文、发图搜图、`/m` 元数据搜索及快捷操作按钮。
+Open **http://127.0.0.1:8018/** (Swagger docs at `/docs`):
+1. Open **Settings (凭据与策略配置)** and paste your **CineVec API Token** (`pica_...`).
+2. *(Optional)* Paste a **Telegram Bot Token** and click Save — the Bot hot-starts immediately for search & channel forwards (≤ 20 MB).
+3. *(Optional)* For **history backfill, 2GB–4GB videos, Web thumbnail cherry-picking, and message-level deletion checks**, fill in `TG_API_ID` & `TG_API_HASH` (from [my.telegram.org](https://my.telegram.org)) and run once:
+   ```bash
+   python -m tg_plugin login
+   ```
+4. *(Optional)* Run tests: `pytest -q`.
