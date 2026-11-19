@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CineGram · CineVec Telegram 插件管理台</title>
+  <style>
+    :root {
+      --bg: #0c0e14;
+      --panel: #141822;
+      --panel-2: #1a1f2c;
+      --border: #252c3d;
+      --text: #e6eaf2;
+      --muted: #8b95ab;
+      --accent: #4f8cff;
+      --accent-hover: #6aa0ff;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --cyan: #06b6d4;
+      --radius: 10px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 18px 48px; }
+    header {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: 0.2px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 500;
+      border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+    }
+    .badge.ok { border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.12); color: #6ee79b; }
+    .badge.warn { border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.12); color: #fcd34d; }
+    .badge.err { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.12); color: #fca5a5; }
+    .badge.info { border-color: rgba(79,140,255,0.4); background: rgba(79,140,255,0.14); color: #9ec0ff; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    button, .btn {
+      cursor: pointer; border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+      border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 500;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    button:hover:not(:disabled) { border-color: #3a4560; background: #212838; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+    button.danger { border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+    button.danger:hover:not(:disabled) { background: rgba(239,68,68,0.14); }
+    button.sm { padding: 4px 9px; font-size: 12px; border-radius: 6px; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px; margin-bottom: 18px;
+    }
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .card-title { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .card-main { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .card-sub { font-size: 12px; color: var(--muted); word-break: break-all; }
+    .bar-bg { height: 6px; background: #0c0e14; border-radius: 99px; overflow: hidden; margin-top: 8px; border: 1px solid var(--border); }
+    .bar-fill { height: 100%; background: var(--accent); transition: width 0.25s; }
+
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .tab { background: transparent; border-color: transparent; color: var(--muted); }
+    .tab.active { background: var(--panel-2); border-color: var(--border); color: var(--text); }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .hidden { display: none !important; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; align-items: end; }
+    label.field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
+    input[type="text"], input[type="password"], input[type="number"], select {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      border-radius: 7px; padding: 8px 10px; font-size: 13px; width: 100%; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    .check-inline { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; padding: 7px 0; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    th { color: var(--muted); font-weight: 500; font-size: 12px; }
+    tr:hover td { background: rgba(255,255,255,0.015); }
+    .mono { font-family: var(--mono); font-size: 12px; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .search-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 14px; }
+    .hit-card {
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .hit-thumb { width: 100%; aspect-ratio: 16/10; object-fit: cover; background: #090b10; display: block; }
+    .hit-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .hit-title { font-weight: 600; font-size: 13px; word-break: break-all; }
+    .hit-meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+
+    .sec-box { border: 1px solid var(--border); border-radius: 9px; padding: 14px; margin-bottom: 14px; background: var(--panel-2); }
+    .sec-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+    .sec-head h3 { margin: 0; font-size: 14px; }
+    .hint { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+    .toast {
+      position: fixed; right: 18px; bottom: 18px; z-index: 99;
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px;
+      padding: 10px 14px; font-size: 13px; box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+      max-width: 420px;
+    }
+    .toast.ok { border-color: rgba(34,197,94,0.5); }
+    .toast.err { border-color: rgba(239,68,68,0.5); color: #fca5a5; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>CineGram · CineVec Telegram 插件</h1>
+      <span id="modeBadge" class="badge info">加载中...</span>
+    </div>
+    <div class="header-actions">
+      <button id="refreshAllBtn" onclick="refreshAll()">刷新状态</button>
+      <a class="btn" href="/docs" target="_blank" rel="noopener">Swagger /docs</a>
+    </div>
+  </header>
+
+  <section class="cards">
+    <div class="card">
+      <div class="card-title"><span>CineVec 本体</span><span id="cinevecBadge" class="badge">-</span></div>
+      <div id="cinevecUrl" class="card-main mono">-</div>
+      <div id="cinevecSub" class="card-sub">正在检测连通性</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Telegram Bot（可选）</span><span id="botBadge" class="badge">-</span></div>
+      <div id="botMain" class="card-main">未配置</div>
+      <div id="botSub" class="card-sub">可在「凭据配置」随时填入 Token 热启用</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>MTProto 用户号（可选）</span><span id="telethonBadge" class="badge">-</span></div>
+      <div id="telethonMain" class="card-main">未配置</div>
+      <div id="telethonSub" class="card-sub">仅用于历史回溯与 >20MB 大视频下载</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>本地背压与同步统计</span><span id="bpBadge" class="badge">-</span></div>
+      <div id="bpMain" class="card-main">-</div>
+      <div id="bpSub" class="card-sub">-</div>
+      <div class="bar-bg"><div id="bpBar" class="bar-fill" style="width:0%"></div></div>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="sources" onclick="switchTab('sources')">群组 / 频道源</button>
+    <button class="tab" data-tab="items" onclick="switchTab('items')">同步记录</button>
+    <button class="tab" data-tab="checks" onclick="switchTab('checks')">存活巡检</button>
+    <button class="tab" data-tab="search" onclick="switchTab('search')">快捷检索（语义 / 标签模糊）</button>
+    <button class="tab" data-tab="settings" onclick="switchTab('settings')">凭据与策略配置</button>
+  </nav>
+
+  <!-- Tab 1: Sources -->
+  <section id="tab-sources" class="panel">
+    <form onsubmit="createSource(event)" class="form-grid">
+      <label class="field">
+        群组 / 频道标识 (@username 或 -100xxx)
+        <input id="srcRef" type="text" placeholder="例如 @movie_clips 或 -1001234567890" required />
+      </label>
+      <label class="field">
+        默认标签 (逗号分隔)
+        <input id="srcTags" type="text" placeholder="例如 tg,动作素材" />
+      </label>
+      <label class="field">
+        备份频道 ID (可选)
+        <input id="srcBackup" type="number" placeholder="留空不转存" />
+      </label>
+      <div>
+        <label class="check-inline">
+          <input id="srcStoreOrig" type="checkbox" /> 托管原片到 S3（默认 Zero-Retention）
+        </label>
+        <label class="check-inline" style="margin-left:12px;">
+          <input id="srcEnabled" type="checkbox" /> 立即开启监听（默认关闭，需手动启用）
+        </label>
+      </div>
+      <div>
+        <button type="submit" class="primary">添加监听源</button>
+      </div>
+    </form>
+    <div id="sourcesWrap"></div>
+
+    <!-- Filter Rules Editor -->
+    <div id="rulesEditor" class="sec-box hidden" style="margin-top:16px;">
+      <div class="sec-head">
+        <h3 id="rulesEditorTitle">编辑过滤规则</h3>
+        <button type="button" class="sm" onclick="closeRulesEditor()">关闭</button>
+      </div>
+      <form onsubmit="saveFilterRules(event)" class="form-grid">
+        <label class="field">
+          媒体类型
+          <select id="ruleMediaKinds">
+            <option value="">全部（图片 + 视频）</option>
+            <option value="video">仅视频</option>
+            <option value="image">仅图片</option>
+          </select>
+        </label>
+        <label class="field">
+          最小文件 (MB，跳过表情/小图)
+          <input id="ruleMinMb" type="number" step="0.1" min="0" placeholder="不限" />
+        </label>
+        <label class="field">
+          最大文件 (MB)
+          <input id="ruleMaxMb" type="number" step="1" min="1" placeholder="不限" />
+        </label>
+        <label class="field">
+          视频最小时长 (秒)
+          <input id="ruleMinDur" type="number" min="0" placeholder="不限" />
+        </label>
+        <label class="field">
+          回溯天数限制 (仅拉近 N 天)
+          <input id="ruleBackfillDays" type="number" min="1" placeholder="不限" />
+        </label>
+        <label class="field">
+          必须包含关键词 (逗号分隔)
+          <input id="ruleIncludeKw" type="text" placeholder="例如 跑步,4K,#动作" />
+        </label>
+        <label class="field">
+          排除屏蔽词 (逗号分隔)
+          <input id="ruleExcludeKw" type="text" placeholder="例如 广告,拼多多" />
+        </label>
+        <div>
+          <button type="submit" class="primary">保存过滤规则</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Selective Message Browser -->
+    <div id="browserPanel" class="sec-box hidden" style="margin-top:16px;">
+      <div class="sec-head">
+        <div>
+          <h3 id="browserTitle">浏览群消息并勾选导入</h3>
+          <p class="hint">仅拉取缩略图与文案，不会下载未勾选的原文件。</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <label class="check-inline" style="padding:0;">
+            <input id="browseApplyRules" type="checkbox" checked onchange="reloadBrowse()" /> 应用过滤规则
+          </label>
+          <button type="button" class="sm" onclick="selectAllUnsynced()">全选未同步</button>
+          <button type="button" id="importSelectedBtn" class="sm primary" onclick="importSelected()">导入选中项 (0)</button>
+          <button type="button" class="sm" onclick="closeBrowser()">关闭</button>
+        </div>
+      </div>
+      <div id="browserGrid" class="search-results"></div>
+      <div style="display:flex;justify-content:center;margin-top:12px;">
+        <button type="button" id="browseMoreBtn" class="sm hidden" onclick="loadMoreBrowse()">加载更早消息</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tab 2: Items -->
+  <section id="tab-items" class="panel hidden">
+    <div class="toolbar">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select id="itemStatusFilter" onchange="loadItems()" style="width:150px;">
+          <option value="">全部状态</option>
+          <option value="uploaded">已上传 (uploaded)</option>
+          <option value="failed">失败 (failed)</option>
+          <option value="excluded">已排除 (excluded)</option>
+        </select>
+        <select id="itemLifecycleFilter" onchange="loadItems()" style="width:170px;">
+          <option value="">全部生命周期</option>
+          <option value="active">有效 (active)</option>
+          <option value="source_invalid">来源已失效</option>
+          <option value="excluded">已排除</option>
+        </select>
+      </div>
+      <button class="sm" onclick="loadItems()">刷新列表</button>
+    </div>
+    <div id="itemsWrap"></div>
+  </section>
+
+  <!-- Tab 3: Checks -->
+  <section id="tab-checks" class="panel hidden">
+    <div class="toolbar">
+      <div>
+        <strong>定时存活巡检</strong>
+        <p class="hint">Bot 模式支持检查群改名/转私密/被踢出；MTProto 模式额外支持逐条检查原消息是否被删。</p>
+      </div>
+      <button id="runAllChecksBtn" class="primary" onclick="runCheck(null)">立即巡检全部</button>
+    </div>
+    <div id="checksWrap"></div>
+  </section>
+
+  <!-- Tab 4: Quick Search -->
+  <section id="tab-search" class="panel hidden">
+    <form onsubmit="runQuickSearch(event)" style="display:flex;gap:8px;flex-wrap:wrap;">
+      <select id="searchMode" style="width:210px;">
+        <option value="text">语义搜（画面/自然语言）</option>
+        <option value="metadata">模糊搜（标签 / 文案 / 名字）</option>
+      </select>
+      <input id="searchQuery" type="text" placeholder="输入关键词、标签或文案片段，例如：running、海边日落、#动作..." style="flex:1;min-width:240px;" required />
+      <select id="searchTopN" style="width:100px;">
+        <option value="8">Top 8</option>
+        <option value="16">Top 16</option>
+        <option value="24">Top 24</option>
+      </select>
+      <button type="submit" class="primary">检索</button>
+    </form>
+    <div id="searchSummary" class="hint" style="margin-top:8px;"></div>
+    <div id="searchResults" class="search-results"></div>
+  </section>
+
+  <!-- Tab 5: Settings -->
+  <section id="tab-settings" class="panel hidden">
+    <form onsubmit="saveSettings(event)">
+      <div class="sec-box">
+        <div class="sec-head">
+          <h3>1. CineVec 本体连接</h3>
+          <span id="cfgCinevecStatus" class="badge">-</span>
+        </div>
+        <div class="form-grid">
+          <label class="field">
+            CineVec 服务地址
+            <input id="cfgBaseUrl" type="text" placeholder="http://127.0.0.1:8008" />
+          </label>
+          <label class="field">
+            API Token（留空保持现有密钥不变）
+            <input id="cfgCinevecToken" type="password" placeholder="在 CineVec 前端 设置 -> API Token 生成" autocomplete="off" />
+          </label>
+        </div>
+      </div>
+
+      <div class="sec-box">
+        <div class="sec-head">
+          <h3>2. Telegram Bot（可选 · 保存后立即热生效）</h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span id="cfgBotStatus" class="badge">-</span>
+            <button type="button" class="sm danger" onclick="clearBot()">清空并停用 Bot</button>
+          </div>
+        </div>
+        <div class="form-grid">
+          <label class="field">
+            TG_BOT_TOKEN（留空保持不变）
+            <input id="cfgBotToken" type="password" placeholder="从 @BotFather 获取" autocomplete="off" />
+          </label>
+          <label class="field">
+            允许私聊的用户 ID 白名单（逗号分隔；留空允许所有私聊）
+            <input id="cfgAllowedUsers" type="text" placeholder="例如 123456789,987654321（发 /id 给 Bot 可查）" />
+          </label>
+        </div>
+      </div>
+
+      <div class="sec-box">
+        <div class="sec-head">
+          <h3>3. MTProto 用户账号（可选 · 用于历史回溯与 2GB~4GB 大视频）</h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span id="cfgTelethonStatus" class="badge">-</span>
+            <button type="button" class="sm danger" onclick="clearTelethon()">清空 MTProto</button>
+          </div>
+        </div>
+        <div class="form-grid">
+          <label class="field">
+            TG_API_ID（从 my.telegram.org 获取）
+            <input id="cfgApiId" type="number" placeholder="可选" />
+          </label>
+          <label class="field">
+            TG_API_HASH（留空保持不变）
+            <input id="cfgApiHash" type="password" placeholder="可选" autocomplete="off" />
+          </label>
+          <label class="field">
+            Session 名称
+            <input id="cfgSessionName" type="text" placeholder="tg_user_session" />
+          </label>
+        </div>
+        <p class="hint">填写 API ID 与 Hash 后，需在终端执行一次 <code class="mono">cd telegram-plugin &amp;&amp; .venv/bin/python -m tg_plugin login</code> 完成交互登录。</p>
+      </div>
+
+      <div class="sec-box">
+        <div class="sec-head"><h3>4. 背压与定时巡检策略</h3></div>
+        <div class="form-grid">
+          <label class="field">
+            最低保留磁盘空间 (GB)
+            <input id="cfgMinDisk" type="number" step="0.5" min="0" />
+          </label>
+          <label class="field">
+            最大预处理在途数
+            <input id="cfgMaxInflight" type="number" min="1" />
+          </label>
+          <label class="field">
+            单文件大小上限 (MB)
+            <input id="cfgMaxFileMb" type="number" min="1" />
+          </label>
+          <label class="field">
+            自动巡检间隔 (小时)
+            <input id="cfgCheckHours" type="number" step="0.5" min="0.05" />
+          </label>
+          <label class="field">
+            失效几天后自动 Exclude（0=不自动清理）
+            <input id="cfgAutoExclude" type="number" min="0" />
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;align-items:center;">
+        <span id="cfgEnvPath" class="hint mono"></span>
+        <button type="submit" class="primary">保存配置并热生效</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+const MODE_LABELS = {
+  web_only: '仅 Web 管理模式（Bot 与 MTProto 均未启用）',
+  bot_only: 'Bot 模式（实时转发 / 频道监听 / 搜图）',
+  telethon_only: 'MTProto 用户号模式（历史回溯 / 大视频 / 巡检）',
+  dual: '双模并行（Bot + MTProto 全功能）',
+};
+
+let currentStatus = null;
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function toast(msg, ok = true) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + (ok ? 'ok' : 'err');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => el.classList.add('hidden'), 3600);
+}
+
+async function api(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    ...opts,
+  });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (!res.ok) {
+    throw new Error((data && (data.detail || data.message)) || ('HTTP ' + res.status));
+  }
+  return data;
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  ['sources', 'items', 'checks', 'search', 'settings'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+  });
+  if (name === 'sources') loadSources();
+  if (name === 'items') loadItems();
+  if (name === 'checks') loadChecks();
+  if (name === 'settings') loadConfig();
+}
+
+async function loadStatus() {
+  const st = await api('/status');
+  currentStatus = st;
+  const mb = document.getElementById('modeBadge');
+  mb.textContent = MODE_LABELS[st.active_mode] || st.active_mode;
+  mb.className = 'badge ' + (st.active_mode === 'web_only' ? 'info' : 'ok');
+
+  const cb = document.getElementById('cinevecBadge');
+  cb.textContent = st.cinevec.ok ? '已连接' : '未连通';
+  cb.className = 'badge ' + (st.cinevec.ok ? 'ok' : 'err');
+  document.getElementById('cinevecUrl').textContent = st.cinevec.base_url;
+  document.getElementById('cinevecSub').textContent = st.cinevec.ok ? 'REST v1 接口正常' : ('错误: ' + (st.cinevec.detail || '连接失败'));
+
+  const bb = document.getElementById('botBadge');
+  const bot = st.bot || {};
+  bb.textContent = bot.running ? '运行中' : (bot.configured ? '已配置未运行' : '未配置（可选）');
+  bb.className = 'badge ' + (bot.running ? 'ok' : (bot.configured ? 'warn' : ''));
+  document.getElementById('botMain').textContent = bot.running ? 'Bot 在线接管中' : '未启用 Bot';
+  document.getElementById('botSub').textContent = bot.running
+    ? (bot.whitelist_enabled ? `白名单已开启（${bot.allowed_users} 人）` : '私聊开放模式（未设置白名单）')
+    : '无需 Bot 也可使用 Web 控制台与接口';
+
+  const tb = document.getElementById('telethonBadge');
+  const tl = st.telethon || {};
+  tb.textContent = tl.authorized ? '已登录' : (tl.configured ? '待登录' : '未配置（可选）');
+  tb.className = 'badge ' + (tl.authorized ? 'ok' : (tl.configured ? 'warn' : ''));
+  document.getElementById('telethonMain').textContent = tl.authorized ? 'MTProto 会话在线' : (tl.configured ? '请运行 login 登录' : '未启用用户号');
+  document.getElementById('telethonSub').textContent = tl.authorized
+    ? `活跃回溯任务: ${(tl.active_backfills || []).length}`
+    : '仅在需要回溯历史消息或 >20MB 大视频时配置';
+
+  const bp = st.backpressure || {};
+  const bpb = document.getElementById('bpBadge');
+  bpb.textContent = bp.ready ? '通畅' : '背压暂停';
+  bpb.className = 'badge ' + (bp.ready ? 'ok' : 'warn');
+  document.getElementById('bpMain').textContent = `磁盘余 ${bp.disk_free_gb ?? '-'} GB · 预处理排队 ${bp.inflight_preprocess ?? 0}/${bp.max_preprocess_inflight ?? 2}`;
+  const cnt = st.items_by_status || {};
+  const totalItems = Object.values(cnt).reduce((a, b) => a + b, 0);
+  document.getElementById('bpSub').textContent = `监控源 ${st.sources_total} · 总记录 ${totalItems}（失败 ${cnt.failed || 0}）`;
+  const pct = Math.min(100, Math.round(((bp.inflight_preprocess || 0) / Math.max(1, bp.max_preprocess_inflight || 1)) * 100));
+  document.getElementById('bpBar').style.width = pct + '%';
+
+  const chkBtn = document.getElementById('runAllChecksBtn');
+  chkBtn.disabled = !(st.capabilities && st.capabilities.can_chat_check);
+  chkBtn.title = chkBtn.disabled ? '需先启用 Bot 或登录 MTProto 用户号' : '';
+}
+
+let sourcesCache = [];
+let editingRulesSourceId = null;
+let browsingSourceId = null;
+let browseOffsetId = 0;
+let browseItems = [];
+let selectedMsgIds = new Set();
+
+function formatRulesSummary(r) {
+  if (!r) return '<span class="hint">无限制</span>';
+  const tags = [];
+  if (r.media_kinds && r.media_kinds.length === 1) tags.push(r.media_kinds[0] === 'video' ? '仅视频' : '仅图片');
+  if (r.min_file_mb != null) tags.push(`>=${r.min_file_mb}MB`);
+  if (r.max_file_mb != null) tags.push(`<=${r.max_file_mb}MB`);
+  if (r.min_duration_sec != null) tags.push(`>=${r.min_duration_sec}s`);
+  if (r.backfill_days != null) tags.push(`近${r.backfill_days}天`);
+  if (r.include_keywords && r.include_keywords.length) tags.push(`含:${r.include_keywords.join('/')}`);
+  if (r.exclude_keywords && r.exclude_keywords.length) tags.push(`排:${r.exclude_keywords.join('/')}`);
+  return tags.length ? tags.map(t => `<span class="badge">${esc(t)}</span>`).join(' ') : '<span class="hint">无限制</span>';
+}
+
+async function loadSources() {
+  const data = await api('/sources');
+  sourcesCache = data.items || [];
+  const caps = (currentStatus && currentStatus.capabilities) || {};
+  const wrap = document.getElementById('sourcesWrap');
+  if (!data.items.length) {
+    wrap.innerHTML = '<p class="hint" style="margin-top:14px;">暂无监控群组/频道，上方输入 @username 或 -100chat_id 即可添加。</p>';
+    return;
+  }
+  const rows = data.items.map(s => {
+    const title = s.chat_title ? `${esc(s.chat_title)} (${esc(s.chat_ref)})` : esc(s.chat_ref);
+    const idStr = s.chat_id ? esc(s.chat_id) : '<span class="badge">待解析</span>';
+    const tags = (s.default_tags || []).map(t => `<span class="badge">${esc(t)}</span>`).join(' ');
+    return `<tr>
+      <td><div><strong>${title}</strong></div><div class="hint mono">ID: ${idStr} ${s.chat_username ? '· @' + esc(s.chat_username) : ''}</div></td>
+      <td>${tags || '<span class="hint">-</span>'}</td>
+      <td>${formatRulesSummary(s.filter_rules)}</td>
+      <td><span class="badge ${s.enabled ? 'ok' : ''}">${s.enabled ? '监听中' : '已停用'}</span></td>
+      <td><span class="badge ${s.store_original ? 'info' : ''}">${s.store_original ? '托管S3' : 'Zero-Retention'}</span></td>
+      <td>
+        <div class="row-actions">
+          <button class="sm" onclick="toggleSource(${s.id}, {enabled: ${!s.enabled}})">${s.enabled ? '停用' : '启用'}</button>
+          <button class="sm" onclick="openRulesEditor(${s.id})">过滤规则</button>
+          <button class="sm" ${caps.can_backfill ? '' : 'disabled title="需登录 MTProto 用户号"'} onclick="openBrowser(${s.id})">浏览勾选</button>
+          <button class="sm" ${caps.can_backfill ? '' : 'disabled title="仅 MTProto 用户号支持历史回溯"'} onclick="triggerBackfill(${s.id})">回溯历史</button>
+          <button class="sm" ${caps.can_chat_check ? '' : 'disabled title="需启用 Bot 或登录 MTProto"'} onclick="runCheck(${s.id})">巡检</button>
+          <button class="sm" onclick="toggleSource(${s.id}, {store_original: ${!s.store_original}})">${s.store_original ? '改零留存' : '改托管S3'}</button>
+          <button class="sm danger" onclick="deleteSource(${s.id})">删除</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table>
+    <thead><tr><th>群组 / 频道</th><th>默认标签</th><th>过滤规则</th><th>状态</th><th>存储策略</th><th>操作</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function openRulesEditor(sourceId) {
+  const s = sourcesCache.find(x => x.id === sourceId);
+  if (!s) return;
+  editingRulesSourceId = sourceId;
+  const r = s.filter_rules || {};
+  document.getElementById('rulesEditorTitle').textContent = `编辑过滤规则 · ${s.chat_title || s.chat_ref}`;
+  document.getElementById('ruleMediaKinds').value = (r.media_kinds && r.media_kinds.length === 1) ? r.media_kinds[0] : '';
+  document.getElementById('ruleMinMb').value = r.min_file_mb ?? '';
+  document.getElementById('ruleMaxMb').value = r.max_file_mb ?? '';
+  document.getElementById('ruleMinDur').value = r.min_duration_sec ?? '';
+  document.getElementById('ruleBackfillDays').value = r.backfill_days ?? '';
+  document.getElementById('ruleIncludeKw').value = (r.include_keywords || []).join(',');
+  document.getElementById('ruleExcludeKw').value = (r.exclude_keywords || []).join(',');
+  document.getElementById('rulesEditor').classList.remove('hidden');
+}
+
+function closeRulesEditor() {
+  editingRulesSourceId = null;
+  document.getElementById('rulesEditor').classList.add('hidden');
+}
+
+async function saveFilterRules(e) {
+  e.preventDefault();
+  if (!editingRulesSourceId) return;
+  const mk = document.getElementById('ruleMediaKinds').value;
+  const minMb = document.getElementById('ruleMinMb').value.trim();
+  const maxMb = document.getElementById('ruleMaxMb').value.trim();
+  const minDur = document.getElementById('ruleMinDur').value.trim();
+  const days = document.getElementById('ruleBackfillDays').value.trim();
+  const inc = document.getElementById('ruleIncludeKw').value.split(',').map(x => x.trim()).filter(Boolean);
+  const exc = document.getElementById('ruleExcludeKw').value.split(',').map(x => x.trim()).filter(Boolean);
+  const filter_rules = {
+    media_kinds: mk ? [mk] : [],
+    min_file_mb: minMb ? Number(minMb) : null,
+    max_file_mb: maxMb ? Number(maxMb) : null,
+    min_duration_sec: minDur ? Number(minDur) : null,
+    backfill_days: days ? Number(days) : null,
+    include_keywords: inc,
+    exclude_keywords: exc,
+  };
+  try {
+    await api(`/sources/${editingRulesSourceId}`, { method: 'PATCH', body: JSON.stringify({ filter_rules }) });
+    toast('过滤规则已保存');
+    closeRulesEditor();
+    await loadSources();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function openBrowser(sourceId) {
+  const s = sourcesCache.find(x => x.id === sourceId);
+  browsingSourceId = sourceId;
+  browseOffsetId = 0;
+  browseItems = [];
+  selectedMsgIds.clear();
+  document.getElementById('browserTitle').textContent = `浏览群消息 · ${(s && (s.chat_title || s.chat_ref)) || sourceId}`;
+  document.getElementById('browserPanel').classList.remove('hidden');
+  updateSelectedCount();
+  await fetchBrowsePage(false);
+}
+
+function closeBrowser() {
+  browsingSourceId = null;
+  document.getElementById('browserPanel').classList.add('hidden');
+}
+
+async function reloadBrowse() {
+  if (!browsingSourceId) return;
+  browseOffsetId = 0;
+  browseItems = [];
+  selectedMsgIds.clear();
+  updateSelectedCount();
+  await fetchBrowsePage(false);
+}
+
+async function loadMoreBrowse() {
+  await fetchBrowsePage(true);
+}
+
+async function fetchBrowsePage(append) {
+  if (!browsingSourceId) return;
+  const applyRules = document.getElementById('browseApplyRules').checked;
+  const params = new URLSearchParams({ limit: '24', offset_id: String(browseOffsetId), apply_rules: String(applyRules) });
+  try {
+    const res = await api(`/sources/${browsingSourceId}/messages?` + params.toString());
+    const newItems = res.items || [];
+    browseItems = append ? [...browseItems, ...newItems] : newItems;
+    browseOffsetId = res.next_offset_id || 0;
+    document.getElementById('browseMoreBtn').classList.toggle('hidden', !browseOffsetId || newItems.length === 0);
+    renderBrowseGrid();
+  } catch (err) { toast(err.message, false); }
+}
+
+function renderBrowseGrid() {
+  const grid = document.getElementById('browserGrid');
+  if (!browseItems.length) {
+    grid.innerHTML = '<p class="hint">当前条件下没有匹配的媒体消息。</p>';
+    return;
+  }
+  grid.innerHTML = browseItems.map(it => {
+    const sizeMb = it.file_size ? (it.file_size / (1024 * 1024)).toFixed(1) + 'MB' : '-';
+    const durStr = it.duration ? ` · ${it.duration}s` : '';
+    const checked = selectedMsgIds.has(it.message_id) ? 'checked' : '';
+    const syncedBadge = it.already_synced ? '<span class="badge ok">已同步</span>' : '<span class="badge">未导入</span>';
+    return `<div class="hit-card">
+      ${it.thumb_url ? `<img class="hit-thumb" src="${esc(it.thumb_url)}" alt="" loading="lazy" />` : `<div class="hit-thumb"></div>`}
+      <div class="hit-body">
+        <label class="check-inline" style="padding:0;">
+          <input type="checkbox" ${checked} onchange="toggleBrowseSelect(${it.message_id}, this.checked)" />
+          <span class="hit-title">${esc(it.filename)}</span>
+        </label>
+        <div class="hit-meta"><span>${esc(it.kind)} · ${sizeMb}${durStr}</span>${syncedBadge}</div>
+        ${it.caption ? `<div class="hint">${esc(it.caption.slice(0, 80))}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleBrowseSelect(mid, checked) {
+  if (checked) selectedMsgIds.add(mid);
+  else selectedMsgIds.delete(mid);
+  updateSelectedCount();
+}
+
+function selectAllUnsynced() {
+  browseItems.forEach(it => {
+    if (!it.already_synced) selectedMsgIds.add(it.message_id);
+  });
+  renderBrowseGrid();
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  document.getElementById('importSelectedBtn').textContent = `导入选中项 (${selectedMsgIds.size})`;
+}
+
+async function importSelected() {
+  if (!browsingSourceId || !selectedMsgIds.size) {
+    toast('请先勾选至少一条消息', false);
+    return;
+  }
+  try {
+    const res = await api(`/sources/${browsingSourceId}/import-selected`, {
+      method: 'POST',
+      body: JSON.stringify({ message_ids: Array.from(selectedMsgIds) }),
+    });
+    toast(`导入完成：成功 ${(res.uploaded || []).length} 条，跳过 ${(res.skipped || []).length} 条，失败 ${(res.failed || []).length} 条`);
+    selectedMsgIds.clear();
+    updateSelectedCount();
+    await reloadBrowse();
+    await loadStatus();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function createSource(e) {
+  e.preventDefault();
+  const chat_ref = document.getElementById('srcRef').value.trim();
+  const tagsRaw = document.getElementById('srcTags').value.trim();
+  const backupRaw = document.getElementById('srcBackup').value.trim();
+  const store_original = document.getElementById('srcStoreOrig').checked;
+  const enabled = document.getElementById('srcEnabled').checked;
+  const default_tags = tagsRaw ? tagsRaw.split(',').map(x => x.trim()).filter(Boolean) : [];
+  try {
+    await api('/sources', {
+      method: 'POST',
+      body: JSON.stringify({
+        chat_ref,
+        default_tags,
+        enabled,
+        store_original,
+        backup_chat_id: backupRaw ? Number(backupRaw) : null,
+      }),
+    });
+    document.getElementById('srcRef').value = '';
+    document.getElementById('srcTags').value = '';
+    document.getElementById('srcBackup').value = '';
+    document.getElementById('srcEnabled').checked = false;
+    toast(enabled ? '已添加并开启监听' : '已添加（默认未开启监听，请在列表中手动启用）');
+    await refreshAll();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function toggleSource(id, patch) {
+  try {
+    await api(`/sources/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+    toast('已更新源配置');
+    await loadSources();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function deleteSource(id) {
+  try {
+    await api(`/sources/${id}`, { method: 'DELETE' });
+    toast('已删除源');
+    await refreshAll();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function triggerBackfill(id) {
+  try {
+    const res = await api(`/sources/${id}/backfill`, { method: 'POST', body: JSON.stringify({}) });
+    toast(res.started ? '已启动历史回溯任务' : '该源已有回溯任务运行中');
+  } catch (err) { toast(err.message, false); }
+}
+
+async function loadItems() {
+  const status = document.getElementById('itemStatusFilter').value;
+  const lifecycle = document.getElementById('itemLifecycleFilter').value;
+  const params = new URLSearchParams({ limit: '100' });
+  if (status) params.set('status', status);
+  if (lifecycle) params.set('lifecycle', lifecycle);
+  const data = await api('/items?' + params.toString());
+  const caps = (currentStatus && currentStatus.capabilities) || {};
+  const wrap = document.getElementById('itemsWrap');
+  if (!data.items.length) {
+    wrap.innerHTML = '<p class="hint" style="margin-top:14px;">暂无匹配的同步记录。</p>';
+    return;
+  }
+  const rows = data.items.map(it => {
+    const lcCls = it.lifecycle === 'active' ? 'ok' : (it.lifecycle === 'source_invalid' ? 'err' : 'warn');
+    const stCls = it.status === 'uploaded' ? 'ok' : (it.status === 'failed' ? 'err' : '');
+    const link = it.source_url && it.source_url.startsWith('http')
+      ? `<a href="${esc(it.source_url)}" target="_blank" rel="noopener">${esc(it.source_url)}</a>`
+      : `<span class="mono">${esc(it.source_url)}</span>`;
+    return `<tr>
+      <td class="mono">${it.id}</td>
+      <td><span class="badge">${esc(it.kind)}</span></td>
+      <td><div class="mono">${esc(it.ref_id)}</div><div class="hint">${link}</div></td>
+      <td><span class="badge ${stCls}">${esc(it.status)}</span></td>
+      <td><span class="badge ${lcCls}">${esc(it.lifecycle)}</span></td>
+      <td class="hint">${esc(it.error_message || '-')}</td>
+      <td>
+        <div class="row-actions">
+          ${it.status === 'failed' ? `<button class="sm" ${caps.can_backfill ? '' : 'disabled title="重试拉取需 MTProto 登录"'} onclick="retryItem(${it.id})">重试</button>` : ''}
+          ${it.asset_id && it.lifecycle !== 'excluded' ? `<button class="sm danger" onclick="excludeItem(${it.id})">排除</button>` : ''}
+          ${it.asset_id && it.lifecycle === 'excluded' ? `<button class="sm" onclick="restoreItem(${it.id})">恢复</button>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table>
+    <thead><tr><th>ID</th><th>类型</th><th>引用与原消息链接</th><th>同步状态</th><th>生命周期</th><th>备注/错误</th><th>操作</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function retryItem(id) {
+  try { await api(`/items/${id}/retry`, { method: 'POST' }); toast('已重新提交'); await loadItems(); }
+  catch (err) { toast(err.message, false); }
+}
+async function excludeItem(id) {
+  try { await api(`/items/${id}/exclude`, { method: 'POST' }); toast('已从 CineVec 排除并清理向量'); await loadItems(); }
+  catch (err) { toast(err.message, false); }
+}
+async function restoreItem(id) {
+  try { await api(`/items/${id}/restore`, { method: 'POST' }); toast('已恢复资产'); await loadItems(); }
+  catch (err) { toast(err.message, false); }
+}
+
+async function loadChecks() {
+  const data = await api('/checks/logs?limit=30');
+  const wrap = document.getElementById('checksWrap');
+  if (!data.items.length) {
+    wrap.innerHTML = '<p class="hint" style="margin-top:14px;">暂无巡检日志。</p>';
+    return;
+  }
+  const rows = data.items.map(c => {
+    const alerts = (c.details && c.details.alerts) || [];
+    const errs = (c.details && c.details.errors) || [];
+    const summary = alerts.length
+      ? alerts.map(a => `${a.type}: ${a.chat_ref || a.source_id}`).join('; ')
+      : (errs.length ? `${errs.length} 个错误` : '正常');
+    return `<tr>
+      <td class="mono">${esc((c.started_at || '').slice(0, 19).replace('T', ' '))}</td>
+      <td>${c.sources_checked}</td>
+      <td>${c.messages_checked}</td>
+      <td>${c.urls_updated}</td>
+      <td>${c.marked_invalid}</td>
+      <td>${c.restored_active}</td>
+      <td>${c.auto_excluded}</td>
+      <td class="hint">${esc(summary)}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table>
+    <thead><tr><th>时间 (UTC)</th><th>群数</th><th>消息数</th><th>链接更新</th><th>标失效</th><th>恢复</th><th>自动排除</th><th>告警摘要</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function runCheck(sourceId) {
+  try {
+    const res = await api('/checks/run', { method: 'POST', body: JSON.stringify({ source_id: sourceId }) });
+    toast(`巡检完成：检查 ${res.sources_checked} 群，标失效 ${res.marked_invalid}，链接更新 ${res.urls_updated}`);
+    await refreshAll();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function runQuickSearch(e) {
+  e.preventDefault();
+  const mode = document.getElementById('searchMode').value;
+  const query = document.getElementById('searchQuery').value.trim();
+  const top_n = Number(document.getElementById('searchTopN').value || 8);
+  const sum = document.getElementById('searchSummary');
+  const grid = document.getElementById('searchResults');
+  sum.textContent = '检索中...';
+  grid.innerHTML = '';
+  try {
+    const endpoint = mode === 'metadata' ? '/search/metadata' : '/search/text';
+    const res = await api(endpoint, { method: 'POST', body: JSON.stringify({ query, top_n }) });
+    const items = res.items || [];
+    sum.textContent = `共命中 ${items.length} 条结果（${mode === 'metadata' ? '标签 / 文案 / 文件名模糊匹配' : '向量语义匹配'}）`;
+    if (!items.length) return;
+    grid.innerHTML = items.map(it => {
+      const prev = (it.previews && it.previews[0]) || {};
+      const imgUrl = prev.locator || it.video_cover_locator || it.cover_locator || '';
+      const scoreText = typeof it.score === 'number'
+        ? `相似度 ${it.score.toFixed(3)}`
+        : ((it.matched_on && it.matched_on.length) ? `命中: ${it.matched_on.join(', ')}` : '元数据命中');
+      const ts = typeof prev.time_seconds === 'number' && prev.time_seconds > 0 ? ` · ${Math.round(prev.time_seconds)}s` : '';
+      const link = it.source_url && it.source_url.startsWith('http')
+        ? `<a href="${esc(it.source_url)}" target="_blank" rel="noopener">直达原消息 ↗</a>` : '';
+      const lcBadge = it.lifecycle && it.lifecycle !== 'active'
+        ? `<span class="badge err">${esc(it.lifecycle_label || it.lifecycle)}</span>` : '';
+      const tagsHtml = (it.tags || []).slice(0, 6).map(t => `<span class="badge">${esc(t)}</span>`).join(' ');
+      return `<div class="hit-card">
+        ${imgUrl ? `<img class="hit-thumb" src="${esc(imgUrl)}" alt="" loading="lazy" />` : `<div class="hit-thumb"></div>`}
+        <div class="hit-body">
+          <div class="hit-title">${esc(it.display_name || it.asset_id || it.id)}</div>
+          <div class="hit-meta"><span>${esc(scoreText)}${ts}</span>${lcBadge}</div>
+          ${tagsHtml ? `<div style="display:flex;gap:4px;flex-wrap:wrap;">${tagsHtml}</div>` : ''}
+          ${it.description ? `<div class="hint">${esc(it.description.slice(0, 100))}</div>` : ''}
+          <div>${link}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    sum.textContent = '检索失败：' + err.message;
+    toast(err.message, false);
+  }
+}
+
+async function loadConfig() {
+  const c = await api('/config');
+  document.getElementById('cfgBaseUrl').value = c.cinevec_base_url || '';
+  document.getElementById('cfgCinevecToken').value = '';
+  document.getElementById('cfgCinevecToken').placeholder = c.has_cinevec_token ? `已配置 (${c.cinevec_token_masked})，留空不变` : '未配置，填入 pica_...';
+  document.getElementById('cfgCinevecStatus').textContent = c.has_cinevec_token ? '已配置 Token' : '未配置 Token';
+  document.getElementById('cfgCinevecStatus').className = 'badge ' + (c.has_cinevec_token ? 'ok' : 'warn');
+
+  document.getElementById('cfgBotToken').value = '';
+  document.getElementById('cfgBotToken').placeholder = c.has_bot_token ? `已配置 (${c.bot_token_masked})，留空不变` : '未配置（可选）';
+  document.getElementById('cfgAllowedUsers').value = (c.tg_allowed_user_ids || []).join(',');
+  document.getElementById('cfgBotStatus').textContent = c.has_bot_token ? '已配置' : '未配置';
+  document.getElementById('cfgBotStatus').className = 'badge ' + (c.has_bot_token ? 'ok' : '');
+
+  document.getElementById('cfgApiId').value = c.tg_api_id ?? '';
+  document.getElementById('cfgApiHash').value = '';
+  document.getElementById('cfgApiHash').placeholder = c.has_tg_api_hash ? `已配置 (${c.tg_api_hash_masked})，留空不变` : '可选';
+  document.getElementById('cfgSessionName').value = c.tg_session_name || 'tg_user_session';
+  document.getElementById('cfgTelethonStatus').textContent = (c.tg_api_id && c.has_tg_api_hash) ? '已配置' : '未配置';
+  document.getElementById('cfgTelethonStatus').className = 'badge ' + ((c.tg_api_id && c.has_tg_api_hash) ? 'ok' : '');
+
+  document.getElementById('cfgMinDisk').value = c.disk_min_free_gb ?? 10;
+  document.getElementById('cfgMaxInflight').value = c.max_preprocess_inflight ?? 2;
+  document.getElementById('cfgMaxFileMb').value = c.max_file_size_mb ?? 4096;
+  document.getElementById('cfgCheckHours').value = c.default_check_interval_hours ?? 6;
+  document.getElementById('cfgAutoExclude').value = c.auto_exclude_after_days ?? 0;
+  document.getElementById('cfgEnvPath').textContent = c.env_file ? `配置文件: ${c.env_file}` : '';
+}
+
+async function saveSettings(e) {
+  e.preventDefault();
+  const payload = {
+    cinevec_base_url: document.getElementById('cfgBaseUrl').value.trim(),
+    tg_allowed_user_ids: document.getElementById('cfgAllowedUsers').value.split(',').map(s => s.trim()).filter(Boolean).map(Number).filter(n => !Number.isNaN(n)),
+    tg_session_name: document.getElementById('cfgSessionName').value.trim() || 'tg_user_session',
+    disk_min_free_gb: Number(document.getElementById('cfgMinDisk').value),
+    max_preprocess_inflight: Number(document.getElementById('cfgMaxInflight').value),
+    max_file_size_mb: Number(document.getElementById('cfgMaxFileMb').value),
+    default_check_interval_hours: Number(document.getElementById('cfgCheckHours').value),
+    auto_exclude_after_days: Number(document.getElementById('cfgAutoExclude').value),
+  };
+  const ct = document.getElementById('cfgCinevecToken').value.trim();
+  if (ct) payload.cinevec_api_token = ct;
+  const bt = document.getElementById('cfgBotToken').value.trim();
+  if (bt) payload.tg_bot_token = bt;
+  const aid = document.getElementById('cfgApiId').value.trim();
+  if (aid) payload.tg_api_id = Number(aid);
+  const ah = document.getElementById('cfgApiHash').value.trim();
+  if (ah) payload.tg_api_hash = ah;
+
+  try {
+    const res = await api('/config', { method: 'PATCH', body: JSON.stringify(payload) });
+    if (res.warnings && res.warnings.length) {
+      toast('已保存，但有提示: ' + res.warnings.join('; '), false);
+    } else {
+      toast('配置已保存并生效');
+    }
+    await loadConfig();
+    await loadStatus();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function clearBot() {
+  try {
+    await api('/config', { method: 'PATCH', body: JSON.stringify({ clear_bot_token: true }) });
+    toast('已清空并停用 Bot');
+    await loadConfig();
+    await loadStatus();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function clearTelethon() {
+  try {
+    await api('/config', { method: 'PATCH', body: JSON.stringify({ clear_telethon: true }) });
+    toast('已清空 MTProto 配置');
+    await loadConfig();
+    await loadStatus();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function refreshAll() {
+  try {
+    await loadStatus();
+    const active = document.querySelector('.tab.active')?.dataset.tab || 'sources';
+    if (active === 'sources') await loadSources();
+    if (active === 'items') await loadItems();
+    if (active === 'checks') await loadChecks();
+    if (active === 'settings') await loadConfig();
+  } catch (err) { toast(err.message, false); }
+}
+
+refreshAll();
+</script>
+</body>
+</html>
