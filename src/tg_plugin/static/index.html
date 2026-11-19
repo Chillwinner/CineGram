@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CineGram · CineVec Telegram 插件管理台</title>
+  <title>CineGram · CineVec Telegram Plugin Console</title>
   <style>
     :root {
       --bg: #0c0e14;
@@ -26,7 +26,7 @@
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans", "Malgun Gothic", sans-serif;
       font-size: 14px;
       line-height: 1.5;
     }
@@ -37,7 +37,7 @@
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
       gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 18px;
     }
-    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .brand h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: 0.2px; }
     .badge {
       display: inline-flex; align-items: center; gap: 6px;
@@ -48,7 +48,17 @@
     .badge.warn { border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.12); color: #fcd34d; }
     .badge.err { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.12); color: #fca5a5; }
     .badge.info { border-color: rgba(79,140,255,0.4); background: rgba(79,140,255,0.14); color: #9ec0ff; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .lang-select {
+      width: auto !important;
+      padding: 6px 10px !important;
+      border-radius: 8px !important;
+      background: var(--panel-2) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text) !important;
+      font-size: 13px !important;
+      cursor: pointer;
+    }
     button, .btn {
       cursor: pointer; border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
       border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 500;
@@ -128,33 +138,40 @@
 <div class="wrap">
   <header>
     <div class="brand">
-      <h1>CineGram · CineVec Telegram 插件</h1>
-      <span id="modeBadge" class="badge info">加载中...</span>
+      <h1 data-i18n="brandTitle">CineGram · CineVec Telegram Plugin</h1>
+      <span id="modeBadge" class="badge info" data-i18n="loading">Loading...</span>
     </div>
     <div class="header-actions">
-      <button id="refreshAllBtn" onclick="refreshAll()">刷新状态</button>
+      <select id="langSelect" class="lang-select" onchange="setLang(this.value)" aria-label="Language">
+        <option value="en">English</option>
+        <option value="zh">简体中文</option>
+        <option value="ja">日本語</option>
+        <option value="ko">한국어</option>
+        <option value="es">Español</option>
+      </select>
+      <button id="refreshAllBtn" onclick="refreshAll()" data-i18n="refreshStatus">Refresh</button>
       <a class="btn" href="/docs" target="_blank" rel="noopener">Swagger /docs</a>
     </div>
   </header>
 
   <section class="cards">
     <div class="card">
-      <div class="card-title"><span>CineVec 本体</span><span id="cinevecBadge" class="badge">-</span></div>
+      <div class="card-title"><span data-i18n="cardCinevec">CineVec Core</span><span id="cinevecBadge" class="badge">-</span></div>
       <div id="cinevecUrl" class="card-main mono">-</div>
-      <div id="cinevecSub" class="card-sub">正在检测连通性</div>
+      <div id="cinevecSub" class="card-sub" data-i18n="checkingConn">Checking connectivity...</div>
     </div>
     <div class="card">
-      <div class="card-title"><span>Telegram Bot（可选）</span><span id="botBadge" class="badge">-</span></div>
-      <div id="botMain" class="card-main">未配置</div>
-      <div id="botSub" class="card-sub">可在「凭据配置」随时填入 Token 热启用</div>
+      <div class="card-title"><span data-i18n="cardBot">Telegram Bot (Optional)</span><span id="botBadge" class="badge">-</span></div>
+      <div id="botMain" class="card-main" data-i18n="notConfigured">Not configured</div>
+      <div id="botSub" class="card-sub" data-i18n="botSubDefault">Add a Bot token anytime in Settings to hot-enable</div>
     </div>
     <div class="card">
-      <div class="card-title"><span>MTProto 用户号（可选）</span><span id="telethonBadge" class="badge">-</span></div>
-      <div id="telethonMain" class="card-main">未配置</div>
-      <div id="telethonSub" class="card-sub">仅用于历史回溯与 >20MB 大视频下载</div>
+      <div class="card-title"><span data-i18n="cardMtproto">MTProto Userbot (Optional)</span><span id="telethonBadge" class="badge">-</span></div>
+      <div id="telethonMain" class="card-main" data-i18n="notConfigured">Not configured</div>
+      <div id="telethonSub" class="card-sub" data-i18n="mtSubDefault">Only needed for history backfill &gt;20MB videos</div>
     </div>
     <div class="card">
-      <div class="card-title"><span>本地背压与同步统计</span><span id="bpBadge" class="badge">-</span></div>
+      <div class="card-title"><span data-i18n="cardBp">Backpressure &amp; Sync Stats</span><span id="bpBadge" class="badge">-</span></div>
       <div id="bpMain" class="card-main">-</div>
       <div id="bpSub" class="card-sub">-</div>
       <div class="bar-bg"><div id="bpBar" class="bar-fill" style="width:0%"></div></div>
@@ -162,38 +179,38 @@
   </section>
 
   <nav class="tabs">
-    <button class="tab active" data-tab="sources" onclick="switchTab('sources')">群组 / 频道源</button>
-    <button class="tab" data-tab="items" onclick="switchTab('items')">同步记录</button>
-    <button class="tab" data-tab="checks" onclick="switchTab('checks')">存活巡检</button>
-    <button class="tab" data-tab="search" onclick="switchTab('search')">快捷检索（语义 / 标签模糊）</button>
-    <button class="tab" data-tab="settings" onclick="switchTab('settings')">凭据与策略配置</button>
+    <button class="tab active" data-tab="sources" onclick="switchTab('sources')" data-i18n="tabSources">Groups / Channels</button>
+    <button class="tab" data-tab="items" onclick="switchTab('items')" data-i18n="tabItems">Sync History</button>
+    <button class="tab" data-tab="checks" onclick="switchTab('checks')" data-i18n="tabChecks">Availability Checks</button>
+    <button class="tab" data-tab="search" onclick="switchTab('search')" data-i18n="tabSearch">Quick Search (Semantic / Lexical)</button>
+    <button class="tab" data-tab="settings" onclick="switchTab('settings')" data-i18n="tabSettings">Credentials &amp; Policy</button>
   </nav>
 
   <!-- Tab 1: Sources -->
   <section id="tab-sources" class="panel">
     <form onsubmit="createSource(event)" class="form-grid">
       <label class="field">
-        群组 / 频道标识 (@username 或 -100xxx)
-        <input id="srcRef" type="text" placeholder="例如 @movie_clips 或 -1001234567890" required />
+        <span data-i18n="srcRefLabel">Group / Channel (@username or -100xxx)</span>
+        <input id="srcRef" type="text" data-i18n-placeholder="srcRefPh" placeholder="e.g. @movie_clips or -1001234567890" required />
       </label>
       <label class="field">
-        默认标签 (逗号分隔)
-        <input id="srcTags" type="text" placeholder="例如 tg,动作素材" />
+        <span data-i18n="srcTagsLabel">Default Tags (comma-separated)</span>
+        <input id="srcTags" type="text" data-i18n-placeholder="srcTagsPh" placeholder="e.g. tg,action" />
       </label>
       <label class="field">
-        备份频道 ID (可选)
-        <input id="srcBackup" type="number" placeholder="留空不转存" />
+        <span data-i18n="srcBackupLabel">Backup Channel ID (optional)</span>
+        <input id="srcBackup" type="number" data-i18n-placeholder="srcBackupPh" placeholder="Leave blank to skip" />
       </label>
       <div>
         <label class="check-inline">
-          <input id="srcStoreOrig" type="checkbox" /> 托管原片到 S3（默认 Zero-Retention）
+          <input id="srcStoreOrig" type="checkbox" /> <span data-i18n="srcStoreOrig">Store originals in S3 (Zero-Retention by default)</span>
         </label>
         <label class="check-inline" style="margin-left:12px;">
-          <input id="srcEnabled" type="checkbox" /> 立即开启监听（默认关闭，需手动启用）
+          <input id="srcEnabled" type="checkbox" /> <span data-i18n="srcEnabled">Enable listening now (off by default)</span>
         </label>
       </div>
       <div>
-        <button type="submit" class="primary">添加监听源</button>
+        <button type="submit" class="primary" data-i18n="addSourceBtn">Add Source</button>
       </div>
     </form>
     <div id="sourcesWrap"></div>
@@ -201,44 +218,44 @@
     <!-- Filter Rules Editor -->
     <div id="rulesEditor" class="sec-box hidden" style="margin-top:16px;">
       <div class="sec-head">
-        <h3 id="rulesEditorTitle">编辑过滤规则</h3>
-        <button type="button" class="sm" onclick="closeRulesEditor()">关闭</button>
+        <h3 id="rulesEditorTitle" data-i18n="rulesEditorTitle">Edit Filter Rules</h3>
+        <button type="button" class="sm" onclick="closeRulesEditor()" data-i18n="close">Close</button>
       </div>
       <form onsubmit="saveFilterRules(event)" class="form-grid">
         <label class="field">
-          媒体类型
+          <span data-i18n="ruleMediaKinds">Media Type</span>
           <select id="ruleMediaKinds">
-            <option value="">全部（图片 + 视频）</option>
-            <option value="video">仅视频</option>
-            <option value="image">仅图片</option>
+            <option value="" data-i18n="mediaAll">All (Photos + Videos)</option>
+            <option value="video" data-i18n="mediaVideo">Videos only</option>
+            <option value="image" data-i18n="mediaImage">Images only</option>
           </select>
         </label>
         <label class="field">
-          最小文件 (MB，跳过表情/小图)
-          <input id="ruleMinMb" type="number" step="0.1" min="0" placeholder="不限" />
+          <span data-i18n="ruleMinMb">Min Size (MB, skip stickers/tiny pics)</span>
+          <input id="ruleMinMb" type="number" step="0.1" min="0" data-i18n-placeholder="noLimit" placeholder="No limit" />
         </label>
         <label class="field">
-          最大文件 (MB)
-          <input id="ruleMaxMb" type="number" step="1" min="1" placeholder="不限" />
+          <span data-i18n="ruleMaxMb">Max Size (MB)</span>
+          <input id="ruleMaxMb" type="number" step="1" min="1" data-i18n-placeholder="noLimit" placeholder="No limit" />
         </label>
         <label class="field">
-          视频最小时长 (秒)
-          <input id="ruleMinDur" type="number" min="0" placeholder="不限" />
+          <span data-i18n="ruleMinDur">Min Video Duration (sec)</span>
+          <input id="ruleMinDur" type="number" min="0" data-i18n-placeholder="noLimit" placeholder="No limit" />
         </label>
         <label class="field">
-          回溯天数限制 (仅拉近 N 天)
-          <input id="ruleBackfillDays" type="number" min="1" placeholder="不限" />
+          <span data-i18n="ruleBackfillDays">Backfill Window (last N days)</span>
+          <input id="ruleBackfillDays" type="number" min="1" data-i18n-placeholder="noLimit" placeholder="No limit" />
         </label>
         <label class="field">
-          必须包含关键词 (逗号分隔)
-          <input id="ruleIncludeKw" type="text" placeholder="例如 跑步,4K,#动作" />
+          <span data-i18n="ruleIncludeKw">Required Keywords (comma-separated)</span>
+          <input id="ruleIncludeKw" type="text" data-i18n-placeholder="ruleIncludePh" placeholder="e.g. running,4K,#action" />
         </label>
         <label class="field">
-          排除屏蔽词 (逗号分隔)
-          <input id="ruleExcludeKw" type="text" placeholder="例如 广告,拼多多" />
+          <span data-i18n="ruleExcludeKw">Blocked Keywords (comma-separated)</span>
+          <input id="ruleExcludeKw" type="text" data-i18n-placeholder="ruleExcludePh" placeholder="e.g. spam,promo" />
         </label>
         <div>
-          <button type="submit" class="primary">保存过滤规则</button>
+          <button type="submit" class="primary" data-i18n="saveRulesBtn">Save Filter Rules</button>
         </div>
       </form>
     </div>
@@ -247,21 +264,21 @@
     <div id="browserPanel" class="sec-box hidden" style="margin-top:16px;">
       <div class="sec-head">
         <div>
-          <h3 id="browserTitle">浏览群消息并勾选导入</h3>
-          <p class="hint">仅拉取缩略图与文案，不会下载未勾选的原文件。</p>
+          <h3 id="browserTitle" data-i18n="browserTitle">Browse Messages &amp; Select to Import</h3>
+          <p class="hint" data-i18n="browserHint">Fetches thumbnails &amp; captions only — unchecked originals are never downloaded.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <label class="check-inline" style="padding:0;">
-            <input id="browseApplyRules" type="checkbox" checked onchange="reloadBrowse()" /> 应用过滤规则
+            <input id="browseApplyRules" type="checkbox" checked onchange="reloadBrowse()" /> <span data-i18n="applyRules">Apply filter rules</span>
           </label>
-          <button type="button" class="sm" onclick="selectAllUnsynced()">全选未同步</button>
-          <button type="button" id="importSelectedBtn" class="sm primary" onclick="importSelected()">导入选中项 (0)</button>
-          <button type="button" class="sm" onclick="closeBrowser()">关闭</button>
+          <button type="button" class="sm" onclick="selectAllUnsynced()" data-i18n="selectUnsynced">Select Unsynced</button>
+          <button type="button" id="importSelectedBtn" class="sm primary" onclick="importSelected()">Import Selected (0)</button>
+          <button type="button" class="sm" onclick="closeBrowser()" data-i18n="close">Close</button>
         </div>
       </div>
       <div id="browserGrid" class="search-results"></div>
       <div style="display:flex;justify-content:center;margin-top:12px;">
-        <button type="button" id="browseMoreBtn" class="sm hidden" onclick="loadMoreBrowse()">加载更早消息</button>
+        <button type="button" id="browseMoreBtn" class="sm hidden" onclick="loadMoreBrowse()" data-i18n="loadOlder">Load Older Messages</button>
       </div>
     </div>
   </section>
@@ -270,20 +287,20 @@
   <section id="tab-items" class="panel hidden">
     <div class="toolbar">
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <select id="itemStatusFilter" onchange="loadItems()" style="width:150px;">
-          <option value="">全部状态</option>
-          <option value="uploaded">已上传 (uploaded)</option>
-          <option value="failed">失败 (failed)</option>
-          <option value="excluded">已排除 (excluded)</option>
+        <select id="itemStatusFilter" onchange="loadItems()" style="width:170px;">
+          <option value="" data-i18n="allStatus">All Statuses</option>
+          <option value="uploaded" data-i18n="stUploaded">Uploaded</option>
+          <option value="failed" data-i18n="stFailed">Failed</option>
+          <option value="excluded" data-i18n="stExcluded">Excluded</option>
         </select>
-        <select id="itemLifecycleFilter" onchange="loadItems()" style="width:170px;">
-          <option value="">全部生命周期</option>
-          <option value="active">有效 (active)</option>
-          <option value="source_invalid">来源已失效</option>
-          <option value="excluded">已排除</option>
+        <select id="itemLifecycleFilter" onchange="loadItems()" style="width:180px;">
+          <option value="" data-i18n="allLifecycle">All Lifecycles</option>
+          <option value="active" data-i18n="lcActive">Active</option>
+          <option value="source_invalid" data-i18n="lcInvalid">Source Invalid</option>
+          <option value="excluded" data-i18n="lcExcluded">Excluded</option>
         </select>
       </div>
-      <button class="sm" onclick="loadItems()">刷新列表</button>
+      <button class="sm" onclick="loadItems()" data-i18n="refreshList">Refresh List</button>
     </div>
     <div id="itemsWrap"></div>
   </section>
@@ -292,10 +309,10 @@
   <section id="tab-checks" class="panel hidden">
     <div class="toolbar">
       <div>
-        <strong>定时存活巡检</strong>
-        <p class="hint">Bot 模式支持检查群改名/转私密/被踢出；MTProto 模式额外支持逐条检查原消息是否被删。</p>
+        <strong data-i18n="checksHeading">Scheduled Availability Checks</strong>
+        <p class="hint" data-i18n="checksHint">Bot mode detects renamed/private/kicked chats; MTProto mode also checks whether individual messages were deleted.</p>
       </div>
-      <button id="runAllChecksBtn" class="primary" onclick="runCheck(null)">立即巡检全部</button>
+      <button id="runAllChecksBtn" class="primary" onclick="runCheck(null)" data-i18n="runAllChecks">Run Check Now</button>
     </div>
     <div id="checksWrap"></div>
   </section>
@@ -303,17 +320,17 @@
   <!-- Tab 4: Quick Search -->
   <section id="tab-search" class="panel hidden">
     <form onsubmit="runQuickSearch(event)" style="display:flex;gap:8px;flex-wrap:wrap;">
-      <select id="searchMode" style="width:210px;">
-        <option value="text">语义搜（画面/自然语言）</option>
-        <option value="metadata">模糊搜（标签 / 文案 / 名字）</option>
+      <select id="searchMode" style="width:230px;">
+        <option value="text" data-i18n="modeSemantic">Semantic (visual / natural language)</option>
+        <option value="metadata" data-i18n="modeMetadata">Lexical (tags / captions / names)</option>
       </select>
-      <input id="searchQuery" type="text" placeholder="输入关键词、标签或文案片段，例如：running、海边日落、#动作..." style="flex:1;min-width:240px;" required />
+      <input id="searchQuery" type="text" data-i18n-placeholder="searchPh" placeholder="Type keywords, #tags, or caption text, e.g. running, sunset, #action..." style="flex:1;min-width:240px;" required />
       <select id="searchTopN" style="width:100px;">
         <option value="8">Top 8</option>
         <option value="16">Top 16</option>
         <option value="24">Top 24</option>
       </select>
-      <button type="submit" class="primary">检索</button>
+      <button type="submit" class="primary" data-i18n="searchBtn">Search</button>
     </form>
     <div id="searchSummary" class="hint" style="margin-top:8px;"></div>
     <div id="searchResults" class="search-results"></div>
@@ -324,87 +341,87 @@
     <form onsubmit="saveSettings(event)">
       <div class="sec-box">
         <div class="sec-head">
-          <h3>1. CineVec 本体连接</h3>
+          <h3 data-i18n="sec1Title">1. CineVec Core Connection</h3>
           <span id="cfgCinevecStatus" class="badge">-</span>
         </div>
         <div class="form-grid">
           <label class="field">
-            CineVec 服务地址
+            <span data-i18n="cfgBaseUrl">CineVec Base URL</span>
             <input id="cfgBaseUrl" type="text" placeholder="http://127.0.0.1:8008" />
           </label>
           <label class="field">
-            API Token（留空保持现有密钥不变）
-            <input id="cfgCinevecToken" type="password" placeholder="在 CineVec 前端 设置 -> API Token 生成" autocomplete="off" />
+            <span data-i18n="cfgCinevecToken">API Token (leave blank to keep current)</span>
+            <input id="cfgCinevecToken" type="password" data-i18n-placeholder="cfgTokenPh" placeholder="Generate in CineVec Settings -> API Tokens" autocomplete="off" />
           </label>
         </div>
       </div>
 
       <div class="sec-box">
         <div class="sec-head">
-          <h3>2. Telegram Bot（可选 · 保存后立即热生效）</h3>
+          <h3 data-i18n="sec2Title">2. Telegram Bot (Optional · Hot-reloads on save)</h3>
           <div style="display:flex;gap:8px;align-items:center;">
             <span id="cfgBotStatus" class="badge">-</span>
-            <button type="button" class="sm danger" onclick="clearBot()">清空并停用 Bot</button>
+            <button type="button" class="sm danger" onclick="clearBot()" data-i18n="clearBot">Clear &amp; Stop Bot</button>
           </div>
         </div>
         <div class="form-grid">
           <label class="field">
-            TG_BOT_TOKEN（留空保持不变）
-            <input id="cfgBotToken" type="password" placeholder="从 @BotFather 获取" autocomplete="off" />
+            <span data-i18n="cfgBotToken">TG_BOT_TOKEN (leave blank to keep)</span>
+            <input id="cfgBotToken" type="password" data-i18n-placeholder="cfgBotPh" placeholder="Get from @BotFather" autocomplete="off" />
           </label>
           <label class="field">
-            允许私聊的用户 ID 白名单（逗号分隔；留空允许所有私聊）
-            <input id="cfgAllowedUsers" type="text" placeholder="例如 123456789,987654321（发 /id 给 Bot 可查）" />
+            <span data-i18n="cfgAllowedUsers">Allowed DM User IDs (comma-separated; blank = open)</span>
+            <input id="cfgAllowedUsers" type="text" data-i18n-placeholder="cfgAllowedPh" placeholder="e.g. 123456789,987654321 (send /id to Bot)" />
           </label>
         </div>
       </div>
 
       <div class="sec-box">
         <div class="sec-head">
-          <h3>3. MTProto 用户账号（可选 · 用于历史回溯与 2GB~4GB 大视频）</h3>
+          <h3 data-i18n="sec3Title">3. MTProto User Account (Optional · History backfill &amp; 2GB–4GB videos)</h3>
           <div style="display:flex;gap:8px;align-items:center;">
             <span id="cfgTelethonStatus" class="badge">-</span>
-            <button type="button" class="sm danger" onclick="clearTelethon()">清空 MTProto</button>
+            <button type="button" class="sm danger" onclick="clearTelethon()" data-i18n="clearMtproto">Clear MTProto</button>
           </div>
         </div>
         <div class="form-grid">
           <label class="field">
-            TG_API_ID（从 my.telegram.org 获取）
-            <input id="cfgApiId" type="number" placeholder="可选" />
+            <span data-i18n="cfgApiId">TG_API_ID (from my.telegram.org)</span>
+            <input id="cfgApiId" type="number" data-i18n-placeholder="optional" placeholder="Optional" />
           </label>
           <label class="field">
-            TG_API_HASH（留空保持不变）
-            <input id="cfgApiHash" type="password" placeholder="可选" autocomplete="off" />
+            <span data-i18n="cfgApiHash">TG_API_HASH (leave blank to keep)</span>
+            <input id="cfgApiHash" type="password" data-i18n-placeholder="optional" placeholder="Optional" autocomplete="off" />
           </label>
           <label class="field">
-            Session 名称
+            <span data-i18n="cfgSessionName">Session Name</span>
             <input id="cfgSessionName" type="text" placeholder="tg_user_session" />
           </label>
         </div>
-        <p class="hint">填写 API ID 与 Hash 后，需在终端执行一次 <code class="mono">cd telegram-plugin &amp;&amp; .venv/bin/python -m tg_plugin login</code> 完成交互登录。</p>
+        <p class="hint"><span data-i18n="mtLoginHint1">After saving API ID &amp; Hash, run</span> <code class="mono">cd telegram-plugin &amp;&amp; .venv/bin/python -m tg_plugin login</code> <span data-i18n="mtLoginHint2">once in your terminal to sign in interactively.</span></p>
       </div>
 
       <div class="sec-box">
-        <div class="sec-head"><h3>4. 背压与定时巡检策略</h3></div>
+        <div class="sec-head"><h3 data-i18n="sec4Title">4. Backpressure &amp; Availability Check Policy</h3></div>
         <div class="form-grid">
           <label class="field">
-            最低保留磁盘空间 (GB)
+            <span data-i18n="cfgMinDisk">Min Free Disk Space (GB)</span>
             <input id="cfgMinDisk" type="number" step="0.5" min="0" />
           </label>
           <label class="field">
-            最大预处理在途数
+            <span data-i18n="cfgMaxInflight">Max In-Flight Preprocess Jobs</span>
             <input id="cfgMaxInflight" type="number" min="1" />
           </label>
           <label class="field">
-            单文件大小上限 (MB)
+            <span data-i18n="cfgMaxFileMb">Max Single File Size (MB)</span>
             <input id="cfgMaxFileMb" type="number" min="1" />
           </label>
           <label class="field">
-            自动巡检间隔 (小时)
+            <span data-i18n="cfgCheckHours">Auto-Check Interval (hours)</span>
             <input id="cfgCheckHours" type="number" step="0.5" min="0.05" />
           </label>
           <label class="field">
-            失效几天后自动 Exclude（0=不自动清理）
+            <span data-i18n="cfgAutoExclude">Auto-Exclude After Invalid (days, 0 = off)</span>
             <input id="cfgAutoExclude" type="number" min="0" />
           </label>
         </div>
@@ -412,7 +429,7 @@
 
       <div style="display:flex;justify-content:flex-end;gap:10px;align-items:center;">
         <span id="cfgEnvPath" class="hint mono"></span>
-        <button type="submit" class="primary">保存配置并热生效</button>
+        <button type="submit" class="primary" data-i18n="saveSettingsBtn">Save &amp; Hot-Reload</button>
       </div>
     </form>
   </section>
@@ -421,12 +438,1063 @@
 <div id="toast" class="toast hidden"></div>
 
 <script>
-const MODE_LABELS = {
-  web_only: '仅 Web 管理模式（Bot 与 MTProto 均未启用）',
-  bot_only: 'Bot 模式（实时转发 / 频道监听 / 搜图）',
-  telethon_only: 'MTProto 用户号模式（历史回溯 / 大视频 / 巡检）',
-  dual: '双模并行（Bot + MTProto 全功能）',
+const LANG_STORAGE_KEY = 'cinegram_lang';
+const HTML_LANG_MAP = { en: 'en', zh: 'zh-CN', ja: 'ja', ko: 'ko', es: 'es' };
+
+const I18N = {
+  en: {
+    pageTitle: 'CineGram · CineVec Telegram Plugin Console',
+    brandTitle: 'CineGram · CineVec Telegram Plugin',
+    loading: 'Loading...',
+    refreshStatus: 'Refresh',
+    cardCinevec: 'CineVec Core',
+    checkingConn: 'Checking connectivity...',
+    cardBot: 'Telegram Bot (Optional)',
+    notConfigured: 'Not configured',
+    botSubDefault: 'Add a Bot token anytime in Settings to hot-enable',
+    cardMtproto: 'MTProto Userbot (Optional)',
+    mtSubDefault: 'Only needed for history backfill & >20MB videos',
+    cardBp: 'Backpressure & Sync Stats',
+    tabSources: 'Groups / Channels',
+    tabItems: 'Sync History',
+    tabChecks: 'Availability Checks',
+    tabSearch: 'Quick Search (Semantic / Lexical)',
+    tabSettings: 'Credentials & Policy',
+    srcRefLabel: 'Group / Channel (@username or -100xxx)',
+    srcRefPh: 'e.g. @movie_clips or -1001234567890',
+    srcTagsLabel: 'Default Tags (comma-separated)',
+    srcTagsPh: 'e.g. tg,action',
+    srcBackupLabel: 'Backup Channel ID (optional)',
+    srcBackupPh: 'Leave blank to skip',
+    srcStoreOrig: 'Store originals in S3 (Zero-Retention by default)',
+    srcEnabled: 'Enable listening now (off by default)',
+    addSourceBtn: 'Add Source',
+    rulesEditorTitle: 'Edit Filter Rules',
+    close: 'Close',
+    ruleMediaKinds: 'Media Type',
+    mediaAll: 'All (Photos + Videos)',
+    mediaVideo: 'Videos only',
+    mediaImage: 'Images only',
+    ruleMinMb: 'Min Size (MB, skip stickers/tiny pics)',
+    ruleMaxMb: 'Max Size (MB)',
+    ruleMinDur: 'Min Video Duration (sec)',
+    ruleBackfillDays: 'Backfill Window (last N days)',
+    ruleIncludeKw: 'Required Keywords (comma-separated)',
+    ruleIncludePh: 'e.g. running,4K,#action',
+    ruleExcludeKw: 'Blocked Keywords (comma-separated)',
+    ruleExcludePh: 'e.g. spam,promo',
+    noLimit: 'No limit',
+    saveRulesBtn: 'Save Filter Rules',
+    browserTitle: 'Browse Messages & Select to Import',
+    browserHint: 'Fetches thumbnails & captions only — unchecked originals are never downloaded.',
+    applyRules: 'Apply filter rules',
+    selectUnsynced: 'Select Unsynced',
+    importSelected: 'Import Selected ({n})',
+    loadOlder: 'Load Older Messages',
+    allStatus: 'All Statuses',
+    stUploaded: 'Uploaded',
+    stFailed: 'Failed',
+    stExcluded: 'Excluded',
+    allLifecycle: 'All Lifecycles',
+    lcActive: 'Active',
+    lcInvalid: 'Source Invalid',
+    lcExcluded: 'Excluded',
+    refreshList: 'Refresh List',
+    checksHeading: 'Scheduled Availability Checks',
+    checksHint: 'Bot mode detects renamed/private/kicked chats; MTProto mode also checks whether individual messages were deleted.',
+    runAllChecks: 'Run Check Now',
+    modeSemantic: 'Semantic (visual / natural language)',
+    modeMetadata: 'Lexical (tags / captions / names)',
+    searchPh: 'Type keywords, #tags, or caption text, e.g. running, sunset, #action...',
+    searchBtn: 'Search',
+    sec1Title: '1. CineVec Core Connection',
+    cfgBaseUrl: 'CineVec Base URL',
+    cfgCinevecToken: 'API Token (leave blank to keep current)',
+    cfgTokenPh: 'Generate in CineVec Settings -> API Tokens',
+    sec2Title: '2. Telegram Bot (Optional · Hot-reloads on save)',
+    clearBot: 'Clear & Stop Bot',
+    cfgBotToken: 'TG_BOT_TOKEN (leave blank to keep)',
+    cfgBotPh: 'Get from @BotFather',
+    cfgAllowedUsers: 'Allowed DM User IDs (comma-separated; blank = open)',
+    cfgAllowedPh: 'e.g. 123456789,987654321 (send /id to Bot)',
+    sec3Title: '3. MTProto User Account (Optional · History backfill & 2GB–4GB videos)',
+    clearMtproto: 'Clear MTProto',
+    cfgApiId: 'TG_API_ID (from my.telegram.org)',
+    cfgApiHash: 'TG_API_HASH (leave blank to keep)',
+    cfgSessionName: 'Session Name',
+    optional: 'Optional',
+    mtLoginHint1: 'After saving API ID & Hash, run',
+    mtLoginHint2: 'once in your terminal to sign in interactively.',
+    sec4Title: '4. Backpressure & Availability Check Policy',
+    cfgMinDisk: 'Min Free Disk Space (GB)',
+    cfgMaxInflight: 'Max In-Flight Preprocess Jobs',
+    cfgMaxFileMb: 'Max Single File Size (MB)',
+    cfgCheckHours: 'Auto-Check Interval (hours)',
+    cfgAutoExclude: 'Auto-Exclude After Invalid (days, 0 = off)',
+    saveSettingsBtn: 'Save & Hot-Reload',
+    mode_web_only: 'Web Console Only (Bot & MTProto disabled)',
+    mode_bot_only: 'Bot Mode (Real-time forward / channel / search)',
+    mode_telethon_only: 'MTProto Mode (History backfill / large videos / checks)',
+    mode_dual: 'Dual Mode (Bot + MTProto full features)',
+    connected: 'Connected',
+    disconnected: 'Offline',
+    restOk: 'REST v1 API healthy',
+    connErr: 'Error: {detail}',
+    connFailed: 'Connection failed',
+    running: 'Running',
+    cfgNotRunning: 'Configured (stopped)',
+    notCfgOpt: 'Not configured (optional)',
+    botOnline: 'Bot Online',
+    botDisabled: 'Bot Disabled',
+    botWhitelist: 'Whitelist enabled ({n} users)',
+    botOpenDm: 'Open DM mode (no whitelist)',
+    botOptionalSub: 'Web console & API work fine without a Bot',
+    authorized: 'Signed in',
+    pendingLogin: 'Pending login',
+    mtOnline: 'MTProto Session Active',
+    mtRunLogin: 'Run login command in terminal',
+    mtDisabled: 'MTProto Disabled',
+    mtActiveBackfills: 'Active backfill tasks: {n}',
+    bpReady: 'Healthy',
+    bpPaused: 'Backpressure Paused',
+    bpMainFmt: 'Disk free {gb} GB · Preprocess queue {inf}/{max}',
+    bpSubFmt: 'Sources {src} · Items {tot} (failed {fail})',
+    needBotOrMt: 'Requires Bot or MTProto login',
+    needMt: 'Requires MTProto userbot login',
+    noRules: 'No rules',
+    lastNDays: 'Last {n}d',
+    incPrefix: 'Inc:',
+    excPrefix: 'Exc:',
+    noSources: 'No monitored groups/channels yet. Add one above with @username or -100chat_id.',
+    pendingResolve: 'Pending',
+    listening: 'Listening',
+    paused: 'Paused',
+    hostedS3: 'Store S3',
+    btnDisable: 'Pause',
+    btnEnable: 'Enable',
+    btnRules: 'Filter Rules',
+    btnBrowse: 'Browse & Pick',
+    btnBackfill: 'Backfill',
+    btnCheck: 'Check',
+    btnToZero: 'Use Zero-Ret',
+    btnToS3: 'Use S3',
+    btnDelete: 'Delete',
+    thChat: 'Group / Channel',
+    thTags: 'Default Tags',
+    thRules: 'Filter Rules',
+    thStatus: 'Status',
+    thStorage: 'Storage Policy',
+    thActions: 'Actions',
+    editRulesOf: 'Edit Filter Rules · {name}',
+    rulesSaved: 'Filter rules saved',
+    browseOf: 'Browse Messages · {name}',
+    noBrowseItems: 'No matching media messages found.',
+    syncedBadge: 'Synced',
+    unsyncedBadge: 'Not imported',
+    selectAtLeastOne: 'Please select at least one message',
+    importDone: 'Import complete: {ok} uploaded, {skip} skipped, {fail} failed',
+    srcAddedOn: 'Source added and listening enabled',
+    srcAddedOff: 'Source added (paused by default; click Enable when ready)',
+    srcUpdated: 'Source updated',
+    srcDeleted: 'Source deleted',
+    backfillStarted: 'History backfill started',
+    backfillRunning: 'Backfill is already running for this source',
+    noItems: 'No matching sync records.',
+    btnRetry: 'Retry',
+    btnExclude: 'Exclude',
+    btnRestore: 'Restore',
+    thType: 'Type',
+    thRef: 'Ref & Original Link',
+    thSyncSt: 'Sync Status',
+    thLifecycle: 'Lifecycle',
+    thNote: 'Note / Error',
+    retried: 'Re-queued for upload',
+    excludedToast: 'Excluded from CineVec and vectors purged',
+    restoredToast: 'Asset restored',
+    noChecks: 'No availability check logs yet.',
+    checkNormal: 'Healthy',
+    checkErrors: '{n} errors',
+    thTime: 'Time (UTC)',
+    thChats: 'Chats',
+    thMsgs: 'Msgs',
+    thUrlUpd: 'URLs Updated',
+    thInvalid: 'Invalidated',
+    thRestored: 'Restored',
+    thAutoExc: 'Auto-Excluded',
+    thAlerts: 'Alert Summary',
+    checkDone: 'Check done: {src} chats, {inv} invalidated, {upd} URLs updated',
+    searching: 'Searching...',
+    searchHits: 'Found {n} results ({mode})',
+    searchModeMeta: 'tags / captions / filename lexical match',
+    searchModeVec: 'vector semantic match',
+    scoreFmt: 'Score {s}',
+    matchedOn: 'Matched: {m}',
+    metaHit: 'Metadata hit',
+    openOriginal: 'Open original message ↗',
+    searchFailed: 'Search failed: {msg}',
+    cfgKeepMasked: 'Configured ({m}), leave blank to keep',
+    cfgTokenUnset: 'Not set, enter pica_...',
+    cfgTokenSet: 'Token configured',
+    cfgTokenMissing: 'Token not set',
+    cfgSet: 'Configured',
+    cfgUnset: 'Not configured',
+    envFileFmt: 'Config file: {p}',
+    savedWithWarn: 'Saved with warnings: {w}',
+    savedOk: 'Configuration saved and hot-reloaded',
+    botCleared: 'Bot token cleared and stopped',
+    mtCleared: 'MTProto credentials cleared',
+  },
+  zh: {
+    pageTitle: 'CineGram · CineVec Telegram 插件管理台',
+    brandTitle: 'CineGram · CineVec Telegram 插件',
+    loading: '加载中...',
+    refreshStatus: '刷新状态',
+    cardCinevec: 'CineVec 本体',
+    checkingConn: '正在检测连通性',
+    cardBot: 'Telegram Bot（可选）',
+    notConfigured: '未配置',
+    botSubDefault: '可在「凭据配置」随时填入 Token 热启用',
+    cardMtproto: 'MTProto 用户号（可选）',
+    mtSubDefault: '仅用于历史回溯与 >20MB 大视频下载',
+    cardBp: '本地背压与同步统计',
+    tabSources: '群组 / 频道源',
+    tabItems: '同步记录',
+    tabChecks: '存活巡检',
+    tabSearch: '快捷检索（语义 / 标签模糊）',
+    tabSettings: '凭据与策略配置',
+    srcRefLabel: '群组 / 频道标识 (@username 或 -100xxx)',
+    srcRefPh: '例如 @movie_clips 或 -1001234567890',
+    srcTagsLabel: '默认标签 (逗号分隔)',
+    srcTagsPh: '例如 tg,动作素材',
+    srcBackupLabel: '备份频道 ID (可选)',
+    srcBackupPh: '留空不转存',
+    srcStoreOrig: '托管原片到 S3（默认 Zero-Retention）',
+    srcEnabled: '立即开启监听（默认关闭，需手动启用）',
+    addSourceBtn: '添加监听源',
+    rulesEditorTitle: '编辑过滤规则',
+    close: '关闭',
+    ruleMediaKinds: '媒体类型',
+    mediaAll: '全部（图片 + 视频）',
+    mediaVideo: '仅视频',
+    mediaImage: '仅图片',
+    ruleMinMb: '最小文件 (MB，跳过表情/小图)',
+    ruleMaxMb: '最大文件 (MB)',
+    ruleMinDur: '视频最小时长 (秒)',
+    ruleBackfillDays: '回溯天数限制 (仅拉近 N 天)',
+    ruleIncludeKw: '必须包含关键词 (逗号分隔)',
+    ruleIncludePh: '例如 跑步,4K,#动作',
+    ruleExcludeKw: '排除屏蔽词 (逗号分隔)',
+    ruleExcludePh: '例如 广告,拼多多',
+    noLimit: '不限',
+    saveRulesBtn: '保存过滤规则',
+    browserTitle: '浏览群消息并勾选导入',
+    browserHint: '仅拉取缩略图与文案，不会下载未勾选的原文件。',
+    applyRules: '应用过滤规则',
+    selectUnsynced: '全选未同步',
+    importSelected: '导入选中项 ({n})',
+    loadOlder: '加载更早消息',
+    allStatus: '全部状态',
+    stUploaded: '已上传 (uploaded)',
+    stFailed: '失败 (failed)',
+    stExcluded: '已排除 (excluded)',
+    allLifecycle: '全部生命周期',
+    lcActive: '有效 (active)',
+    lcInvalid: '来源已失效',
+    lcExcluded: '已排除',
+    refreshList: '刷新列表',
+    checksHeading: '定时存活巡检',
+    checksHint: 'Bot 模式支持检查群改名/转私密/被踢出；MTProto 模式额外支持逐条检查原消息是否被删。',
+    runAllChecks: '立即巡检全部',
+    modeSemantic: '语义搜（画面/自然语言）',
+    modeMetadata: '模糊搜（标签 / 文案 / 名字）',
+    searchPh: '输入关键词、标签或文案片段，例如：running、海边日落、#动作...',
+    searchBtn: '检索',
+    sec1Title: '1. CineVec 本体连接',
+    cfgBaseUrl: 'CineVec 服务地址',
+    cfgCinevecToken: 'API Token（留空保持现有密钥不变）',
+    cfgTokenPh: '在 CineVec 前端 设置 -> API Token 生成',
+    sec2Title: '2. Telegram Bot（可选 · 保存后立即热生效）',
+    clearBot: '清空并停用 Bot',
+    cfgBotToken: 'TG_BOT_TOKEN（留空保持不变）',
+    cfgBotPh: '从 @BotFather 获取',
+    cfgAllowedUsers: '允许私聊的用户 ID 白名单（逗号分隔；留空允许所有私聊）',
+    cfgAllowedPh: '例如 123456789,987654321（发 /id 给 Bot 可查）',
+    sec3Title: '3. MTProto 用户账号（可选 · 用于历史回溯与 2GB~4GB 大视频）',
+    clearMtproto: '清空 MTProto',
+    cfgApiId: 'TG_API_ID（从 my.telegram.org 获取）',
+    cfgApiHash: 'TG_API_HASH（留空保持不变）',
+    cfgSessionName: 'Session 名称',
+    optional: '可选',
+    mtLoginHint1: '填写 API ID 与 Hash 后，需在终端执行一次',
+    mtLoginHint2: '完成交互登录。',
+    sec4Title: '4. 背压与定时巡检策略',
+    cfgMinDisk: '最低保留磁盘空间 (GB)',
+    cfgMaxInflight: '最大预处理在途数',
+    cfgMaxFileMb: '单文件大小上限 (MB)',
+    cfgCheckHours: '自动巡检间隔 (小时)',
+    cfgAutoExclude: '失效几天后自动 Exclude（0=不自动清理）',
+    saveSettingsBtn: '保存配置并热生效',
+    mode_web_only: '仅 Web 管理模式（Bot 与 MTProto 均未启用）',
+    mode_bot_only: 'Bot 模式（实时转发 / 频道监听 / 搜图）',
+    mode_telethon_only: 'MTProto 用户号模式（历史回溯 / 大视频 / 巡检）',
+    mode_dual: '双模并行（Bot + MTProto 全功能）',
+    connected: '已连接',
+    disconnected: '未连通',
+    restOk: 'REST v1 接口正常',
+    connErr: '错误: {detail}',
+    connFailed: '连接失败',
+    running: '运行中',
+    cfgNotRunning: '已配置未运行',
+    notCfgOpt: '未配置（可选）',
+    botOnline: 'Bot 在线接管中',
+    botDisabled: '未启用 Bot',
+    botWhitelist: '白名单已开启（{n} 人）',
+    botOpenDm: '私聊开放模式（未设置白名单）',
+    botOptionalSub: '无需 Bot 也可使用 Web 控制台与接口',
+    authorized: '已登录',
+    pendingLogin: '待登录',
+    mtOnline: 'MTProto 会话在线',
+    mtRunLogin: '请运行 login 登录',
+    mtDisabled: '未启用用户号',
+    mtActiveBackfills: '活跃回溯任务: {n}',
+    bpReady: '通畅',
+    bpPaused: '背压暂停',
+    bpMainFmt: '磁盘余 {gb} GB · 预处理排队 {inf}/{max}',
+    bpSubFmt: '监控源 {src} · 总记录 {tot}（失败 {fail}）',
+    needBotOrMt: '需先启用 Bot 或登录 MTProto 用户号',
+    needMt: '需登录 MTProto 用户号',
+    noRules: '无限制',
+    lastNDays: '近{n}天',
+    incPrefix: '含:',
+    excPrefix: '排:',
+    noSources: '暂无监控群组/频道，上方输入 @username 或 -100chat_id 即可添加。',
+    pendingResolve: '待解析',
+    listening: '监听中',
+    paused: '已停用',
+    hostedS3: '托管S3',
+    btnDisable: '停用',
+    btnEnable: '启用',
+    btnRules: '过滤规则',
+    btnBrowse: '浏览勾选',
+    btnBackfill: '回溯历史',
+    btnCheck: '巡检',
+    btnToZero: '改零留存',
+    btnToS3: '改托管S3',
+    btnDelete: '删除',
+    thChat: '群组 / 频道',
+    thTags: '默认标签',
+    thRules: '过滤规则',
+    thStatus: '状态',
+    thStorage: '存储策略',
+    thActions: '操作',
+    editRulesOf: '编辑过滤规则 · {name}',
+    rulesSaved: '过滤规则已保存',
+    browseOf: '浏览群消息 · {name}',
+    noBrowseItems: '当前条件下没有匹配的媒体消息。',
+    syncedBadge: '已同步',
+    unsyncedBadge: '未导入',
+    selectAtLeastOne: '请先勾选至少一条消息',
+    importDone: '导入完成：成功 {ok} 条，跳过 {skip} 条，失败 {fail} 条',
+    srcAddedOn: '已添加并开启监听',
+    srcAddedOff: '已添加（默认未开启监听，请在列表中手动启用）',
+    srcUpdated: '已更新源配置',
+    srcDeleted: '已删除源',
+    backfillStarted: '已启动历史回溯任务',
+    backfillRunning: '该源已有回溯任务运行中',
+    noItems: '暂无匹配的同步记录。',
+    btnRetry: '重试',
+    btnExclude: '排除',
+    btnRestore: '恢复',
+    thType: '类型',
+    thRef: '引用与原消息链接',
+    thSyncSt: '同步状态',
+    thLifecycle: '生命周期',
+    thNote: '备注/错误',
+    retried: '已重新提交',
+    excludedToast: '已从 CineVec 排除并清理向量',
+    restoredToast: '已恢复资产',
+    noChecks: '暂无巡检日志。',
+    checkNormal: '正常',
+    checkErrors: '{n} 个错误',
+    thTime: '时间 (UTC)',
+    thChats: '群数',
+    thMsgs: '消息数',
+    thUrlUpd: '链接更新',
+    thInvalid: '标失效',
+    thRestored: '恢复',
+    thAutoExc: '自动排除',
+    thAlerts: '告警摘要',
+    checkDone: '巡检完成：检查 {src} 群，标失效 {inv}，链接更新 {upd}',
+    searching: '检索中...',
+    searchHits: '共命中 {n} 条结果（{mode}）',
+    searchModeMeta: '标签 / 文案 / 文件名模糊匹配',
+    searchModeVec: '向量语义匹配',
+    scoreFmt: '相似度 {s}',
+    matchedOn: '命中: {m}',
+    metaHit: '元数据命中',
+    openOriginal: '直达原消息 ↗',
+    searchFailed: '检索失败：{msg}',
+    cfgKeepMasked: '已配置 ({m})，留空不变',
+    cfgTokenUnset: '未配置，填入 pica_...',
+    cfgTokenSet: '已配置 Token',
+    cfgTokenMissing: '未配置 Token',
+    cfgSet: '已配置',
+    cfgUnset: '未配置',
+    envFileFmt: '配置文件: {p}',
+    savedWithWarn: '已保存，但有提示: {w}',
+    savedOk: '配置已保存并生效',
+    botCleared: '已清空并停用 Bot',
+    mtCleared: '已清空 MTProto 配置',
+  },
+  ja: {
+    pageTitle: 'CineGram · CineVec Telegram プラグイン管理',
+    brandTitle: 'CineGram · CineVec Telegram プラグイン',
+    loading: '読み込み中...',
+    refreshStatus: '更新',
+    cardCinevec: 'CineVec 本体',
+    checkingConn: '接続を確認中...',
+    cardBot: 'Telegram Bot（任意）',
+    notConfigured: '未設定',
+    botSubDefault: '設定からいつでも Bot Token を追加して有効化できます',
+    cardMtproto: 'MTProto ユーザーアカウント（任意）',
+    mtSubDefault: '過去履歴取得や >20MB の大容量動画のみ必要',
+    cardBp: 'バックプレッシャーと同期統計',
+    tabSources: 'グループ / チャンネル',
+    tabItems: '同期履歴',
+    tabChecks: '生存チェック',
+    tabSearch: 'クイック検索（意味 / タグ）',
+    tabSettings: '認証・ポリシー設定',
+    srcRefLabel: 'グループ / チャンネル (@username または -100xxx)',
+    srcRefPh: '例: @movie_clips または -1001234567890',
+    srcTagsLabel: 'デフォルトタグ（カンマ区切り）',
+    srcTagsPh: '例: tg,アクション',
+    srcBackupLabel: 'バックアップチャンネル ID（任意）',
+    srcBackupPh: '空欄なら転送しない',
+    srcStoreOrig: '原本を S3 に保存（既定は Zero-Retention）',
+    srcEnabled: 'すぐに監視を開始（既定はオフ）',
+    addSourceBtn: 'ソースを追加',
+    rulesEditorTitle: 'フィルタールールを編集',
+    close: '閉じる',
+    ruleMediaKinds: 'メディア種別',
+    mediaAll: 'すべて（画像 + 動画）',
+    mediaVideo: '動画のみ',
+    mediaImage: '画像のみ',
+    ruleMinMb: '最小サイズ (MB)',
+    ruleMaxMb: '最大サイズ (MB)',
+    ruleMinDur: '最小動画長 (秒)',
+    ruleBackfillDays: '遡及日数（直近 N 日）',
+    ruleIncludeKw: '必須キーワード（カンマ区切り）',
+    ruleIncludePh: '例: running,4K,#アクション',
+    ruleExcludeKw: '除外キーワード（カンマ区切り）',
+    ruleExcludePh: '例: 広告,スパム',
+    noLimit: '制限なし',
+    saveRulesBtn: 'ルールを保存',
+    browserTitle: 'メッセージを閲覧して選択取り込み',
+    browserHint: 'サムネイルと本文のみ取得します。未選択の原本はダウンロードされません。',
+    applyRules: 'フィルタールールを適用',
+    selectUnsynced: '未同期を全選択',
+    importSelected: '選択を取り込む ({n})',
+    loadOlder: '過去のメッセージを読み込む',
+    allStatus: 'すべての状態',
+    stUploaded: 'アップロード済',
+    stFailed: '失敗',
+    stExcluded: '除外済',
+    allLifecycle: 'すべてのライフサイクル',
+    lcActive: '有効',
+    lcInvalid: 'ソース無効',
+    lcExcluded: '除外済',
+    refreshList: '一覧を更新',
+    checksHeading: '定期生存チェック',
+    checksHint: 'Bot モードはグループ変更・退出を検知。MTProto は個別メッセージ削除も検査できます。',
+    runAllChecks: '今すぐ全体チェック',
+    modeSemantic: '意味検索（映像 / 自然言語）',
+    modeMetadata: '語彙検索（タグ / キャプション / 名前）',
+    searchPh: 'キーワード・#タグ・キャプションを入力...',
+    searchBtn: '検索',
+    sec1Title: '1. CineVec 本体接続',
+    cfgBaseUrl: 'CineVec URL',
+    cfgCinevecToken: 'API トークン（空欄で現状維持）',
+    cfgTokenPh: 'CineVec の設定 -> API トークンで発行',
+    sec2Title: '2. Telegram Bot（任意・保存で即時反映）',
+    clearBot: 'Bot を削除・停止',
+    cfgBotToken: 'TG_BOT_TOKEN（空欄で現状維持）',
+    cfgBotPh: '@BotFather から取得',
+    cfgAllowedUsers: 'DM 許可ユーザー ID（カンマ区切り・空欄で全許可）',
+    cfgAllowedPh: '例: 123456789（Bot に /id 送信で確認）',
+    sec3Title: '3. MTProto アカウント（任意・履歴取得と 2GB–4GB 動画用）',
+    clearMtproto: 'MTProto をクリア',
+    cfgApiId: 'TG_API_ID (my.telegram.org)',
+    cfgApiHash: 'TG_API_HASH（空欄で現状維持）',
+    cfgSessionName: 'セッション名',
+    optional: '任意',
+    mtLoginHint1: 'API ID と Hash を保存後、ターミナルで一度',
+    mtLoginHint2: 'を実行してログインしてください。',
+    sec4Title: '4. バックプレッシャー・定期チェック設定',
+    cfgMinDisk: '最小空きディスク容量 (GB)',
+    cfgMaxInflight: '最大同時前処理数',
+    cfgMaxFileMb: '単一ファイル上限 (MB)',
+    cfgCheckHours: '自動チェック間隔 (時間)',
+    cfgAutoExclude: '無効後自動除外日数（0=無効）',
+    saveSettingsBtn: '保存して即時反映',
+    mode_web_only: 'Web 管理のみ（Bot・MTProto 無効）',
+    mode_bot_only: 'Bot モード（リアルタイム転送 / チャンネル / 検索）',
+    mode_telethon_only: 'MTProto モード（履歴取得 / 大容量動画 / 巡回）',
+    mode_dual: 'デュアルモード（Bot + MTProto 全機能）',
+    connected: '接続済',
+    disconnected: '未接続',
+    restOk: 'REST v1 API 正常',
+    connErr: 'エラー: {detail}',
+    connFailed: '接続失敗',
+    running: '稼働中',
+    cfgNotRunning: '設定済（停止中）',
+    notCfgOpt: '未設定（任意）',
+    botOnline: 'Bot オンライン',
+    botDisabled: 'Bot 無効',
+    botWhitelist: 'ホワイトリスト有効（{n} 名）',
+    botOpenDm: 'DM 開放モード',
+    botOptionalSub: 'Bot なしでも Web 管理画面と API を利用可能',
+    authorized: 'ログイン済',
+    pendingLogin: 'ログイン待ち',
+    mtOnline: 'MTProto セッション稼働中',
+    mtRunLogin: 'login コマンドを実行してください',
+    mtDisabled: 'MTProto 無効',
+    mtActiveBackfills: '実行中の遡及タスク: {n}',
+    bpReady: '正常',
+    bpPaused: 'バックプレッシャー一時停止',
+    bpMainFmt: '空き容量 {gb} GB · 前処理キュー {inf}/{max}',
+    bpSubFmt: 'ソース {src} · 履歴 {tot}（失敗 {fail}）',
+    needBotOrMt: 'Bot または MTProto ログインが必要',
+    needMt: 'MTProto ログインが必要',
+    noRules: '制限なし',
+    lastNDays: '直近{n}日',
+    incPrefix: '含:',
+    excPrefix: '除:',
+    noSources: '監視中のグループ/チャンネルはありません。上から追加してください。',
+    pendingResolve: '解決待ち',
+    listening: '監視中',
+    paused: '停止中',
+    hostedS3: 'S3 保存',
+    btnDisable: '停止',
+    btnEnable: '有効化',
+    btnRules: 'フィルター',
+    btnBrowse: '閲覧選択',
+    btnBackfill: '履歴取得',
+    btnCheck: 'チェック',
+    btnToZero: 'ゼロ保持へ',
+    btnToS3: 'S3 保存へ',
+    btnDelete: '削除',
+    thChat: 'グループ / チャンネル',
+    thTags: 'デフォルトタグ',
+    thRules: 'フィルタールール',
+    thStatus: '状態',
+    thStorage: '保存ポリシー',
+    thActions: '操作',
+    editRulesOf: 'フィルタールール編集 · {name}',
+    rulesSaved: 'フィルタールールを保存しました',
+    browseOf: 'メッセージ閲覧 · {name}',
+    noBrowseItems: '条件に一致するメディアはありません。',
+    syncedBadge: '同期済',
+    unsyncedBadge: '未取込',
+    selectAtLeastOne: '少なくとも 1 件選択してください',
+    importDone: '取込完了: 成功 {ok} / スキップ {skip} / 失敗 {fail}',
+    srcAddedOn: 'ソースを追加し監視を開始しました',
+    srcAddedOff: 'ソースを追加しました（既定は停止中です）',
+    srcUpdated: 'ソースを更新しました',
+    srcDeleted: 'ソースを削除しました',
+    backfillStarted: '履歴取得を開始しました',
+    backfillRunning: 'このソースの履歴取得はすでに実行中です',
+    noItems: '一致する同期履歴はありません。',
+    btnRetry: '再試行',
+    btnExclude: '除外',
+    btnRestore: '復元',
+    thType: '種別',
+    thRef: '参照・元メッセージ',
+    thSyncSt: '同期状態',
+    thLifecycle: 'ライフサイクル',
+    thNote: 'メモ / エラー',
+    retried: '再送信しました',
+    excludedToast: 'CineVec から除外しベクトルを削除しました',
+    restoredToast: 'アセットを復元しました',
+    noChecks: 'チェック履歴はまだありません。',
+    checkNormal: '正常',
+    checkErrors: '{n} 件のエラー',
+    thTime: '日時 (UTC)',
+    thChats: 'グループ数',
+    thMsgs: 'メッセージ',
+    thUrlUpd: 'URL更新',
+    thInvalid: '無効化',
+    thRestored: '復元',
+    thAutoExc: '自動除外',
+    thAlerts: 'アラート概要',
+    checkDone: 'チェック完了: {src} 件検査、無効 {inv}、URL更新 {upd}',
+    searching: '検索中...',
+    searchHits: '{n} 件ヒット（{mode}）',
+    searchModeMeta: 'タグ / キャプション / ファイル名一致',
+    searchModeVec: 'ベクトル意味検索',
+    scoreFmt: '類似度 {s}',
+    matchedOn: '一致: {m}',
+    metaHit: 'メタデータ一致',
+    openOriginal: '元メッセージを開く ↗',
+    searchFailed: '検索失敗: {msg}',
+    cfgKeepMasked: '設定済 ({m})、空欄で維持',
+    cfgTokenUnset: '未設定 (pica_...)',
+    cfgTokenSet: 'トークン設定済',
+    cfgTokenMissing: 'トークン未設定',
+    cfgSet: '設定済',
+    cfgUnset: '未設定',
+    envFileFmt: '設定ファイル: {p}',
+    savedWithWarn: '保存しました（警告あり）: {w}',
+    savedOk: '設定を保存して反映しました',
+    botCleared: 'Bot を停止・クリアしました',
+    mtCleared: 'MTProto 設定をクリアしました',
+  },
+  ko: {
+    pageTitle: 'CineGram · CineVec Telegram 플러그인 콘솔',
+    brandTitle: 'CineGram · CineVec Telegram 플러그인',
+    loading: '로딩 중...',
+    refreshStatus: '새로고침',
+    cardCinevec: 'CineVec 코어',
+    checkingConn: '연결 확인 중...',
+    cardBot: 'Telegram Bot (선택)',
+    notConfigured: '미설정',
+    botSubDefault: '설정에서 언제든 Bot 토큰을 입력해 즉시 활성화할 수 있습니다',
+    cardMtproto: 'MTProto 사용자 계정 (선택)',
+    mtSubDefault: '과거 기록 수집 및 >20MB 대용량 영상에만 필요',
+    cardBp: '백프레셔 및 동기화 통계',
+    tabSources: '그룹 / 채널',
+    tabItems: '동기화 기록',
+    tabChecks: '생존 점검',
+    tabSearch: '빠른 검색 (시맨틱 / 태그)',
+    tabSettings: '자격 증명 및 정책',
+    srcRefLabel: '그룹 / 채널 (@username 또는 -100xxx)',
+    srcRefPh: '예: @movie_clips 또는 -1001234567890',
+    srcTagsLabel: '기본 태그 (쉼표 구분)',
+    srcTagsPh: '예: tg,액션',
+    srcBackupLabel: '백업 채널 ID (선택)',
+    srcBackupPh: '비워두면 건너뜀',
+    srcStoreOrig: '원본을 S3에 저장 (기본값 Zero-Retention)',
+    srcEnabled: '즉시 수신 시작 (기본값 꺼짐)',
+    addSourceBtn: '소스 추가',
+    rulesEditorTitle: '필터 규칙 편집',
+    close: '닫기',
+    ruleMediaKinds: '미디어 유형',
+    mediaAll: '전체 (사진 + 영상)',
+    mediaVideo: '영상만',
+    mediaImage: '이미지만',
+    ruleMinMb: '최소 크기 (MB)',
+    ruleMaxMb: '최대 크기 (MB)',
+    ruleMinDur: '최소 영상 길이 (초)',
+    ruleBackfillDays: '수집 기간 제한 (최근 N일)',
+    ruleIncludeKw: '필수 키워드 (쉼표 구분)',
+    ruleIncludePh: '예: running,4K,#액션',
+    ruleExcludeKw: '차단 키워드 (쉼표 구분)',
+    ruleExcludePh: '예: 광고,스팸',
+    noLimit: '제한 없음',
+    saveRulesBtn: '규칙 저장',
+    browserTitle: '메시지 탐색 및 선택 가져오기',
+    browserHint: '썸네일과 텍스트만 불러오며 선택하지 않은 원본은 다운로드하지 않습니다.',
+    applyRules: '필터 규칙 적용',
+    selectUnsynced: '미동기화 전체 선택',
+    importSelected: '선택 항목 가져오기 ({n})',
+    loadOlder: '이전 메시지 더 불러오기',
+    allStatus: '전체 상태',
+    stUploaded: '업로드됨',
+    stFailed: '실패',
+    stExcluded: '제외됨',
+    allLifecycle: '전체 생명주기',
+    lcActive: '활성',
+    lcInvalid: '원본 무효',
+    lcExcluded: '제외됨',
+    refreshList: '목록 새로고침',
+    checksHeading: '정기 생존 점검',
+    checksHint: 'Bot 모드는 채팅 변경/추방을 감지하며 MTProto 모드는 개별 메시지 삭제 여부도 확인합니다.',
+    runAllChecks: '지금 전체 점검',
+    modeSemantic: '시맨틱 검색 (화면 / 자연어)',
+    modeMetadata: '어휘 검색 (태그 / 캡션 / 이름)',
+    searchPh: '키워드, #태그, 캡션 입력...',
+    searchBtn: '검색',
+    sec1Title: '1. CineVec 코어 연결',
+    cfgBaseUrl: 'CineVec 서버 주소',
+    cfgCinevecToken: 'API 토큰 (비우면 기존 유지)',
+    cfgTokenPh: 'CineVec 설정 -> API 토큰에서 발급',
+    sec2Title: '2. Telegram Bot (선택 · 저장 즉시 반영)',
+    clearBot: 'Bot 초기화 및 중지',
+    cfgBotToken: 'TG_BOT_TOKEN (비우면 유지)',
+    cfgBotPh: '@BotFather에서 발급',
+    cfgAllowedUsers: '허용 DM 사용자 ID (쉼표 구분, 비우면 전체 허용)',
+    cfgAllowedPh: '예: 123456789 (Bot에 /id 전송)',
+    sec3Title: '3. MTProto 계정 (선택 · 과거 수집 및 2GB~4GB 영상)',
+    clearMtproto: 'MTProto 초기화',
+    cfgApiId: 'TG_API_ID (my.telegram.org)',
+    cfgApiHash: 'TG_API_HASH (비우면 유지)',
+    cfgSessionName: '세션 이름',
+    optional: '선택',
+    mtLoginHint1: 'API ID와 Hash 저장 후 터미널에서 한 번',
+    mtLoginHint2: '명령을 실행해 로그인하세요.',
+    sec4Title: '4. 백프레셔 및 정기 점검 정책',
+    cfgMinDisk: '최소 여유 디스크 (GB)',
+    cfgMaxInflight: '최대 동시 전처리 수',
+    cfgMaxFileMb: '단일 파일 최대 크기 (MB)',
+    cfgCheckHours: '자동 점검 주기 (시간)',
+    cfgAutoExclude: '무효 후 자동 제외 일수 (0=끔)',
+    saveSettingsBtn: '저장 및 즉시 적용',
+    mode_web_only: '웹 관리 전용 (Bot/MTProto 꺼짐)',
+    mode_bot_only: 'Bot 모드 (실시간 전달 / 채널 / 검색)',
+    mode_telethon_only: 'MTProto 모드 (과거 수집 / 대용량 영상 / 점검)',
+    mode_dual: '듀얼 모드 (Bot + MTProto 전체 기능)',
+    connected: '연결됨',
+    disconnected: '연결 안 됨',
+    restOk: 'REST v1 API 정상',
+    connErr: '오류: {detail}',
+    connFailed: '연결 실패',
+    running: '실행 중',
+    cfgNotRunning: '설정됨 (중지됨)',
+    notCfgOpt: '미설정 (선택)',
+    botOnline: 'Bot 온라인',
+    botDisabled: 'Bot 비활성',
+    botWhitelist: '화이트리스트 활성 ({n}명)',
+    botOpenDm: '공개 DM 모드',
+    botOptionalSub: 'Bot 없이도 웹 콘솔과 API 사용 가능',
+    authorized: '로그인됨',
+    pendingLogin: '로그인 대기',
+    mtOnline: 'MTProto 세션 활성',
+    mtRunLogin: 'login 명령을 실행하세요',
+    mtDisabled: 'MTProto 비활성',
+    mtActiveBackfills: '진행 중 백필 작업: {n}',
+    bpReady: '원활',
+    bpPaused: '백프레셔 일시정지',
+    bpMainFmt: '여유 디스크 {gb} GB · 전처리 큐 {inf}/{max}',
+    bpSubFmt: '소스 {src} · 기록 {tot} (실패 {fail})',
+    needBotOrMt: 'Bot 또는 MTProto 로그인 필요',
+    needMt: 'MTProto 로그인 필요',
+    noRules: '제한 없음',
+    lastNDays: '최근 {n}일',
+    incPrefix: '포함:',
+    excPrefix: '제외:',
+    noSources: '등록된 그룹/채널이 없습니다. 위에서 추가하세요.',
+    pendingResolve: '확인 대기',
+    listening: '수신 중',
+    paused: '중지됨',
+    hostedS3: 'S3 저장',
+    btnDisable: '중지',
+    btnEnable: '활성화',
+    btnRules: '필터 규칙',
+    btnBrowse: '탐색 선택',
+    btnBackfill: '과거 수집',
+    btnCheck: '점검',
+    btnToZero: '제로 리텐션',
+    btnToS3: 'S3 저장',
+    btnDelete: '삭제',
+    thChat: '그룹 / 채널',
+    thTags: '기본 태그',
+    thRules: '필터 규칙',
+    thStatus: '상태',
+    thStorage: '저장 정책',
+    thActions: '작업',
+    editRulesOf: '필터 규칙 편집 · {name}',
+    rulesSaved: '필터 규칙이 저장되었습니다',
+    browseOf: '메시지 탐색 · {name}',
+    noBrowseItems: '일치하는 미디어 메시지가 없습니다.',
+    syncedBadge: '동기화됨',
+    unsyncedBadge: '미가져옴',
+    selectAtLeastOne: '최소 1개 이상 선택하세요',
+    importDone: '가져오기 완료: 성공 {ok}, 건너뜀 {skip}, 실패 {fail}',
+    srcAddedOn: '소스 추가 및 수신 시작됨',
+    srcAddedOff: '소스 추가됨 (기본 꺼짐, 목록에서 활성화하세요)',
+    srcUpdated: '소스 설정 업데이트됨',
+    srcDeleted: '소스가 삭제되었습니다',
+    backfillStarted: '과거 수집 작업이 시작되었습니다',
+    backfillRunning: '이미 수집 작업이 실행 중입니다',
+    noItems: '일치하는 동기화 기록이 없습니다.',
+    btnRetry: '재시도',
+    btnExclude: '제외',
+    btnRestore: '복원',
+    thType: '유형',
+    thRef: '참조 및 원본 링크',
+    thSyncSt: '동기화 상태',
+    thLifecycle: '생명주기',
+    thNote: '메모 / 오류',
+    retried: '재시도 요청됨',
+    excludedToast: 'CineVec에서 제외하고 벡터를 삭제했습니다',
+    restoredToast: '에셋이 복원되었습니다',
+    noChecks: '점검 기록이 없습니다.',
+    checkNormal: '정상',
+    checkErrors: '오류 {n}건',
+    thTime: '시간 (UTC)',
+    thChats: '채팅 수',
+    thMsgs: '메시지',
+    thUrlUpd: 'URL 갱신',
+    thInvalid: '무효 처리',
+    thRestored: '복원',
+    thAutoExc: '자동 제외',
+    thAlerts: '알림 요약',
+    checkDone: '점검 완료: {src}개 채팅, 무효 {inv}, URL 갱신 {upd}',
+    searching: '검색 중...',
+    searchHits: '총 {n}건 일치 ({mode})',
+    searchModeMeta: '태그 / 캡션 / 파일명 일치',
+    searchModeVec: '벡터 시맨틱 일치',
+    scoreFmt: '유사도 {s}',
+    matchedOn: '일치: {m}',
+    metaHit: '메타데이터 일치',
+    openOriginal: '원본 메시지 열기 ↗',
+    searchFailed: '검색 실패: {msg}',
+    cfgKeepMasked: '설정됨 ({m}), 비우면 유지',
+    cfgTokenUnset: '미설정 (pica_...)',
+    cfgTokenSet: '토큰 설정됨',
+    cfgTokenMissing: '토큰 미설정',
+    cfgSet: '설정됨',
+    cfgUnset: '미설정',
+    envFileFmt: '설정 파일: {p}',
+    savedWithWarn: '저장됨 (경고 있음): {w}',
+    savedOk: '설정이 저장되고 즉시 적용되었습니다',
+    botCleared: 'Bot이 초기화 및 중지되었습니다',
+    mtCleared: 'MTProto 설정이 초기화되었습니다',
+  },
+  es: {
+    pageTitle: 'CineGram · Consola del Plugin Telegram para CineVec',
+    brandTitle: 'CineGram · Plugin Telegram de CineVec',
+    loading: 'Cargando...',
+    refreshStatus: 'Actualizar',
+    cardCinevec: 'Núcleo CineVec',
+    checkingConn: 'Comprobando conexión...',
+    cardBot: 'Bot de Telegram (Opcional)',
+    notConfigured: 'Sin configurar',
+    botSubDefault: 'Añade un token de Bot en Ajustes para activarlo en caliente',
+    cardMtproto: 'Usuario MTProto (Opcional)',
+    mtSubDefault: 'Solo para historial y vídeos >20MB',
+    cardBp: 'Contrapresión y estadísticas',
+    tabSources: 'Grupos / Canales',
+    tabItems: 'Historial de sincronización',
+    tabChecks: 'Comprobaciones',
+    tabSearch: 'Búsqueda rápida (Semántica / Léxica)',
+    tabSettings: 'Credenciales y política',
+    srcRefLabel: 'Grupo / Canal (@usuario o -100xxx)',
+    srcRefPh: 'p. ej. @movie_clips o -1001234567890',
+    srcTagsLabel: 'Etiquetas por defecto (separadas por coma)',
+    srcTagsPh: 'p. ej. tg,acción',
+    srcBackupLabel: 'ID de canal de respaldo (opcional)',
+    srcBackupPh: 'Dejar vacío para omitir',
+    srcStoreOrig: 'Guardar originales en S3 (Zero-Retention por defecto)',
+    srcEnabled: 'Activar escucha ahora (desactivado por defecto)',
+    addSourceBtn: 'Añadir fuente',
+    rulesEditorTitle: 'Editar reglas de filtro',
+    close: 'Cerrar',
+    ruleMediaKinds: 'Tipo de medio',
+    mediaAll: 'Todo (Fotos + Vídeos)',
+    mediaVideo: 'Solo vídeos',
+    mediaImage: 'Solo imágenes',
+    ruleMinMb: 'Tamaño mín. (MB)',
+    ruleMaxMb: 'Tamaño máx. (MB)',
+    ruleMinDur: 'Duración mín. vídeo (seg)',
+    ruleBackfillDays: 'Ventana de historial (últimos N días)',
+    ruleIncludeKw: 'Palabras obligatorias (coma)',
+    ruleIncludePh: 'p. ej. correr,4K,#acción',
+    ruleExcludeKw: 'Palabras bloqueadas (coma)',
+    ruleExcludePh: 'p. ej. spam,anuncio',
+    noLimit: 'Sin límite',
+    saveRulesBtn: 'Guardar reglas',
+    browserTitle: 'Explorar mensajes y seleccionar para importar',
+    browserHint: 'Solo descarga miniaturas y textos; los originales no seleccionados nunca se bajan.',
+    applyRules: 'Aplicar reglas de filtro',
+    selectUnsynced: 'Seleccionar no sincronizados',
+    importSelected: 'Importar seleccionados ({n})',
+    loadOlder: 'Cargar mensajes anteriores',
+    allStatus: 'Todos los estados',
+    stUploaded: 'Subido',
+    stFailed: 'Fallido',
+    stExcluded: 'Excluido',
+    allLifecycle: 'Todos los ciclos',
+    lcActive: 'Activo',
+    lcInvalid: 'Origen inválido',
+    lcExcluded: 'Excluido',
+    refreshList: 'Actualizar lista',
+    checksHeading: 'Comprobaciones programadas',
+    checksHint: 'El modo Bot detecta chats renombrados/privados/expulsiones; MTProto también verifica mensajes borrados.',
+    runAllChecks: 'Comprobar ahora',
+    modeSemantic: 'Semántica (visual / lenguaje natural)',
+    modeMetadata: 'Léxica (etiquetas / textos / nombres)',
+    searchPh: 'Escribe palabras clave, #etiquetas o texto...',
+    searchBtn: 'Buscar',
+    sec1Title: '1. Conexión con CineVec',
+    cfgBaseUrl: 'URL base de CineVec',
+    cfgCinevecToken: 'API Token (vacío para mantener)',
+    cfgTokenPh: 'Generar en CineVec Ajustes -> API Tokens',
+    sec2Title: '2. Bot de Telegram (Opcional · Recarga en caliente)',
+    clearBot: 'Limpiar y detener Bot',
+    cfgBotToken: 'TG_BOT_TOKEN (vacío para mantener)',
+    cfgBotPh: 'Obtener de @BotFather',
+    cfgAllowedUsers: 'IDs permitidos por DM (coma; vacío = abierto)',
+    cfgAllowedPh: 'p. ej. 123456789 (envía /id al Bot)',
+    sec3Title: '3. Cuenta MTProto (Opcional · Historial y vídeos 2GB–4GB)',
+    clearMtproto: 'Limpiar MTProto',
+    cfgApiId: 'TG_API_ID (de my.telegram.org)',
+    cfgApiHash: 'TG_API_HASH (vacío para mantener)',
+    cfgSessionName: 'Nombre de sesión',
+    optional: 'Opcional',
+    mtLoginHint1: 'Tras guardar API ID y Hash, ejecuta',
+    mtLoginHint2: 'una vez en la terminal para iniciar sesión.',
+    sec4Title: '4. Contrapresión y comprobaciones',
+    cfgMinDisk: 'Espacio libre mínimo (GB)',
+    cfgMaxInflight: 'Máx. trabajos de preproceso activos',
+    cfgMaxFileMb: 'Tamaño máximo de archivo (MB)',
+    cfgCheckHours: 'Intervalo de comprobación (horas)',
+    cfgAutoExclude: 'Auto-excluir tras días inválido (0 = off)',
+    saveSettingsBtn: 'Guardar y recargar',
+    mode_web_only: 'Solo consola Web (Bot y MTProto desactivados)',
+    mode_bot_only: 'Modo Bot (reenvío / canales / búsqueda)',
+    mode_telethon_only: 'Modo MTProto (historial / vídeos grandes / checks)',
+    mode_dual: 'Modo Dual (Bot + MTProto completo)',
+    connected: 'Conectado',
+    disconnected: 'Sin conexión',
+    restOk: 'API REST v1 operativa',
+    connErr: 'Error: {detail}',
+    connFailed: 'Error de conexión',
+    running: 'En ejecución',
+    cfgNotRunning: 'Configurado (detenido)',
+    notCfgOpt: 'Sin configurar (opcional)',
+    botOnline: 'Bot en línea',
+    botDisabled: 'Bot desactivado',
+    botWhitelist: 'Lista blanca activa ({n} usuarios)',
+    botOpenDm: 'Modo DM abierto',
+    botOptionalSub: 'La consola Web y la API funcionan sin Bot',
+    authorized: 'Conectado',
+    pendingLogin: 'Pendiente de login',
+    mtOnline: 'Sesión MTProto activa',
+    mtRunLogin: 'Ejecuta el comando login',
+    mtDisabled: 'MTProto desactivado',
+    mtActiveBackfills: 'Tareas de historial activas: {n}',
+    bpReady: 'Correcto',
+    bpPaused: 'Pausado por contrapresión',
+    bpMainFmt: 'Disco libre {gb} GB · Cola {inf}/{max}',
+    bpSubFmt: 'Fuentes {src} · Registros {tot} (fallidos {fail})',
+    needBotOrMt: 'Requiere Bot o login MTProto',
+    needMt: 'Requiere login MTProto',
+    noRules: 'Sin reglas',
+    lastNDays: 'Últimos {n}d',
+    incPrefix: 'Inc:',
+    excPrefix: 'Exc:',
+    noSources: 'Aún no hay grupos/canales. Añade uno arriba con @usuario o -100chat_id.',
+    pendingResolve: 'Pendiente',
+    listening: 'Escuchando',
+    paused: 'Pausado',
+    hostedS3: 'Guardar S3',
+    btnDisable: 'Pausar',
+    btnEnable: 'Activar',
+    btnRules: 'Reglas',
+    btnBrowse: 'Explorar',
+    btnBackfill: 'Historial',
+    btnCheck: 'Comprobar',
+    btnToZero: 'Usar Zero-Ret',
+    btnToS3: 'Usar S3',
+    btnDelete: 'Eliminar',
+    thChat: 'Grupo / Canal',
+    thTags: 'Etiquetas',
+    thRules: 'Reglas',
+    thStatus: 'Estado',
+    thStorage: 'Almacenamiento',
+    thActions: 'Acciones',
+    editRulesOf: 'Editar reglas · {name}',
+    rulesSaved: 'Reglas guardadas',
+    browseOf: 'Explorar mensajes · {name}',
+    noBrowseItems: 'No hay mensajes multimedia coincidentes.',
+    syncedBadge: 'Sincronizado',
+    unsyncedBadge: 'Sin importar',
+    selectAtLeastOne: 'Selecciona al menos un mensaje',
+    importDone: 'Importación lista: {ok} subidos, {skip} omitidos, {fail} fallidos',
+    srcAddedOn: 'Fuente añadida y escucha activada',
+    srcAddedOff: 'Fuente añadida (pausada por defecto; actívala en la lista)',
+    srcUpdated: 'Fuente actualizada',
+    srcDeleted: 'Fuente eliminada',
+    backfillStarted: 'Historial iniciado',
+    backfillRunning: 'Ya hay un historial en curso para esta fuente',
+    noItems: 'No hay registros coincidentes.',
+    btnRetry: 'Reintentar',
+    btnExclude: 'Excluir',
+    btnRestore: 'Restaurar',
+    thType: 'Tipo',
+    thRef: 'Referencia y enlace',
+    thSyncSt: 'Estado',
+    thLifecycle: 'Ciclo de vida',
+    thNote: 'Nota / Error',
+    retried: 'Reencolado',
+    excludedToast: 'Excluido de CineVec y vectores purgados',
+    restoredToast: 'Recurso restaurado',
+    noChecks: 'Aún no hay registros de comprobación.',
+    checkNormal: 'Correcto',
+    checkErrors: '{n} errores',
+    thTime: 'Hora (UTC)',
+    thChats: 'Chats',
+    thMsgs: 'Msgs',
+    thUrlUpd: 'URLs act.',
+    thInvalid: 'Inválidos',
+    thRestored: 'Restaurados',
+    thAutoExc: 'Auto-excl.',
+    thAlerts: 'Resumen de alertas',
+    checkDone: 'Comprobación lista: {src} chats, {inv} inválidos, {upd} URLs actualizadas',
+    searching: 'Buscando...',
+    searchHits: '{n} resultados ({mode})',
+    searchModeMeta: 'coincidencia léxica de etiquetas / textos / nombre',
+    searchModeVec: 'coincidencia semántica vectorial',
+    scoreFmt: 'Similitud {s}',
+    matchedOn: 'Coincidencia: {m}',
+    metaHit: 'Coincidencia de metadatos',
+    openOriginal: 'Abrir mensaje original ↗',
+    searchFailed: 'Error en búsqueda: {msg}',
+    cfgKeepMasked: 'Configurado ({m}), vacío para mantener',
+    cfgTokenUnset: 'Sin configurar (pica_...)',
+    cfgTokenSet: 'Token configurado',
+    cfgTokenMissing: 'Token sin configurar',
+    cfgSet: 'Configurado',
+    cfgUnset: 'Sin configurar',
+    envFileFmt: 'Archivo de config: {p}',
+    savedWithWarn: 'Guardado con avisos: {w}',
+    savedOk: 'Configuración guardada y recargada',
+    botCleared: 'Bot limpiado y detenido',
+    mtCleared: 'Credenciales MTProto limpiadas',
+  },
 };
+
+function readInitialLang() {
+  try {
+    const saved = localStorage.getItem(LANG_STORAGE_KEY);
+    if (saved && I18N[saved]) return saved;
+  } catch {}
+  return 'en';
+}
+
+let currentLang = readInitialLang();
+
+function t(key, vars = {}) {
+  const dict = I18N[currentLang] || I18N.en;
+  let str = dict[key] ?? I18N.en[key] ?? key;
+  for (const [k, v] of Object.entries(vars)) {
+    str = str.replaceAll(`{${k}}`, String(v));
+  }
+  return str;
+}
+
+function applyStaticI18n() {
+  document.documentElement.lang = HTML_LANG_MAP[currentLang] || 'en';
+  document.title = t('pageTitle');
+  const sel = document.getElementById('langSelect');
+  if (sel) sel.value = currentLang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  updateSelectedCount();
+}
+
+function setLang(next) {
+  if (!I18N[next]) return;
+  currentLang = next;
+  try { localStorage.setItem(LANG_STORAGE_KEY, next); } catch {}
+  applyStaticI18n();
+  refreshAll();
+  if (browsingSourceId) renderBrowseGrid();
+}
 
 let currentStatus = null;
 
@@ -459,8 +1527,8 @@ async function api(url, opts = {}) {
 
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  ['sources', 'items', 'checks', 'search', 'settings'].forEach(t => {
-    document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+  ['sources', 'items', 'checks', 'search', 'settings'].forEach(tb => {
+    document.getElementById('tab-' + tb).classList.toggle('hidden', tb !== name);
   });
   if (name === 'sources') loadSources();
   if (name === 'items') loadItems();
@@ -472,47 +1540,55 @@ async function loadStatus() {
   const st = await api('/status');
   currentStatus = st;
   const mb = document.getElementById('modeBadge');
-  mb.textContent = MODE_LABELS[st.active_mode] || st.active_mode;
+  mb.textContent = t('mode_' + st.active_mode) !== ('mode_' + st.active_mode) ? t('mode_' + st.active_mode) : st.active_mode;
   mb.className = 'badge ' + (st.active_mode === 'web_only' ? 'info' : 'ok');
 
   const cb = document.getElementById('cinevecBadge');
-  cb.textContent = st.cinevec.ok ? '已连接' : '未连通';
+  cb.textContent = st.cinevec.ok ? t('connected') : t('disconnected');
   cb.className = 'badge ' + (st.cinevec.ok ? 'ok' : 'err');
   document.getElementById('cinevecUrl').textContent = st.cinevec.base_url;
-  document.getElementById('cinevecSub').textContent = st.cinevec.ok ? 'REST v1 接口正常' : ('错误: ' + (st.cinevec.detail || '连接失败'));
+  document.getElementById('cinevecSub').textContent = st.cinevec.ok ? t('restOk') : t('connErr', { detail: st.cinevec.detail || t('connFailed') });
 
   const bb = document.getElementById('botBadge');
   const bot = st.bot || {};
-  bb.textContent = bot.running ? '运行中' : (bot.configured ? '已配置未运行' : '未配置（可选）');
+  bb.textContent = bot.running ? t('running') : (bot.configured ? t('cfgNotRunning') : t('notCfgOpt'));
   bb.className = 'badge ' + (bot.running ? 'ok' : (bot.configured ? 'warn' : ''));
-  document.getElementById('botMain').textContent = bot.running ? 'Bot 在线接管中' : '未启用 Bot';
+  document.getElementById('botMain').textContent = bot.running ? t('botOnline') : t('botDisabled');
   document.getElementById('botSub').textContent = bot.running
-    ? (bot.whitelist_enabled ? `白名单已开启（${bot.allowed_users} 人）` : '私聊开放模式（未设置白名单）')
-    : '无需 Bot 也可使用 Web 控制台与接口';
+    ? (bot.whitelist_enabled ? t('botWhitelist', { n: bot.allowed_users }) : t('botOpenDm'))
+    : t('botOptionalSub');
 
   const tb = document.getElementById('telethonBadge');
   const tl = st.telethon || {};
-  tb.textContent = tl.authorized ? '已登录' : (tl.configured ? '待登录' : '未配置（可选）');
+  tb.textContent = tl.authorized ? t('authorized') : (tl.configured ? t('pendingLogin') : t('notCfgOpt'));
   tb.className = 'badge ' + (tl.authorized ? 'ok' : (tl.configured ? 'warn' : ''));
-  document.getElementById('telethonMain').textContent = tl.authorized ? 'MTProto 会话在线' : (tl.configured ? '请运行 login 登录' : '未启用用户号');
+  document.getElementById('telethonMain').textContent = tl.authorized ? t('mtOnline') : (tl.configured ? t('mtRunLogin') : t('mtDisabled'));
   document.getElementById('telethonSub').textContent = tl.authorized
-    ? `活跃回溯任务: ${(tl.active_backfills || []).length}`
-    : '仅在需要回溯历史消息或 >20MB 大视频时配置';
+    ? t('mtActiveBackfills', { n: (tl.active_backfills || []).length })
+    : t('mtSubDefault');
 
   const bp = st.backpressure || {};
   const bpb = document.getElementById('bpBadge');
-  bpb.textContent = bp.ready ? '通畅' : '背压暂停';
+  bpb.textContent = bp.ready ? t('bpReady') : t('bpPaused');
   bpb.className = 'badge ' + (bp.ready ? 'ok' : 'warn');
-  document.getElementById('bpMain').textContent = `磁盘余 ${bp.disk_free_gb ?? '-'} GB · 预处理排队 ${bp.inflight_preprocess ?? 0}/${bp.max_preprocess_inflight ?? 2}`;
+  document.getElementById('bpMain').textContent = t('bpMainFmt', {
+    gb: bp.disk_free_gb ?? '-',
+    inf: bp.inflight_preprocess ?? 0,
+    max: bp.max_preprocess_inflight ?? 2,
+  });
   const cnt = st.items_by_status || {};
   const totalItems = Object.values(cnt).reduce((a, b) => a + b, 0);
-  document.getElementById('bpSub').textContent = `监控源 ${st.sources_total} · 总记录 ${totalItems}（失败 ${cnt.failed || 0}）`;
+  document.getElementById('bpSub').textContent = t('bpSubFmt', {
+    src: st.sources_total,
+    tot: totalItems,
+    fail: cnt.failed || 0,
+  });
   const pct = Math.min(100, Math.round(((bp.inflight_preprocess || 0) / Math.max(1, bp.max_preprocess_inflight || 1)) * 100));
   document.getElementById('bpBar').style.width = pct + '%';
 
   const chkBtn = document.getElementById('runAllChecksBtn');
   chkBtn.disabled = !(st.capabilities && st.capabilities.can_chat_check);
-  chkBtn.title = chkBtn.disabled ? '需先启用 Bot 或登录 MTProto 用户号' : '';
+  chkBtn.title = chkBtn.disabled ? t('needBotOrMt') : '';
 }
 
 let sourcesCache = [];
@@ -523,16 +1599,16 @@ let browseItems = [];
 let selectedMsgIds = new Set();
 
 function formatRulesSummary(r) {
-  if (!r) return '<span class="hint">无限制</span>';
+  if (!r) return `<span class="hint">${esc(t('noRules'))}</span>`;
   const tags = [];
-  if (r.media_kinds && r.media_kinds.length === 1) tags.push(r.media_kinds[0] === 'video' ? '仅视频' : '仅图片');
+  if (r.media_kinds && r.media_kinds.length === 1) tags.push(r.media_kinds[0] === 'video' ? t('mediaVideo') : t('mediaImage'));
   if (r.min_file_mb != null) tags.push(`>=${r.min_file_mb}MB`);
   if (r.max_file_mb != null) tags.push(`<=${r.max_file_mb}MB`);
   if (r.min_duration_sec != null) tags.push(`>=${r.min_duration_sec}s`);
-  if (r.backfill_days != null) tags.push(`近${r.backfill_days}天`);
-  if (r.include_keywords && r.include_keywords.length) tags.push(`含:${r.include_keywords.join('/')}`);
-  if (r.exclude_keywords && r.exclude_keywords.length) tags.push(`排:${r.exclude_keywords.join('/')}`);
-  return tags.length ? tags.map(t => `<span class="badge">${esc(t)}</span>`).join(' ') : '<span class="hint">无限制</span>';
+  if (r.backfill_days != null) tags.push(t('lastNDays', { n: r.backfill_days }));
+  if (r.include_keywords && r.include_keywords.length) tags.push(`${t('incPrefix')}${r.include_keywords.join('/')}`);
+  if (r.exclude_keywords && r.exclude_keywords.length) tags.push(`${t('excPrefix')}${r.exclude_keywords.join('/')}`);
+  return tags.length ? tags.map(tg => `<span class="badge">${esc(tg)}</span>`).join(' ') : `<span class="hint">${esc(t('noRules'))}</span>`;
 }
 
 async function loadSources() {
@@ -541,34 +1617,34 @@ async function loadSources() {
   const caps = (currentStatus && currentStatus.capabilities) || {};
   const wrap = document.getElementById('sourcesWrap');
   if (!data.items.length) {
-    wrap.innerHTML = '<p class="hint" style="margin-top:14px;">暂无监控群组/频道，上方输入 @username 或 -100chat_id 即可添加。</p>';
+    wrap.innerHTML = `<p class="hint" style="margin-top:14px;">${esc(t('noSources'))}</p>`;
     return;
   }
   const rows = data.items.map(s => {
     const title = s.chat_title ? `${esc(s.chat_title)} (${esc(s.chat_ref)})` : esc(s.chat_ref);
-    const idStr = s.chat_id ? esc(s.chat_id) : '<span class="badge">待解析</span>';
-    const tags = (s.default_tags || []).map(t => `<span class="badge">${esc(t)}</span>`).join(' ');
+    const idStr = s.chat_id ? esc(s.chat_id) : `<span class="badge">${esc(t('pendingResolve'))}</span>`;
+    const tags = (s.default_tags || []).map(tg => `<span class="badge">${esc(tg)}</span>`).join(' ');
     return `<tr>
       <td><div><strong>${title}</strong></div><div class="hint mono">ID: ${idStr} ${s.chat_username ? '· @' + esc(s.chat_username) : ''}</div></td>
       <td>${tags || '<span class="hint">-</span>'}</td>
       <td>${formatRulesSummary(s.filter_rules)}</td>
-      <td><span class="badge ${s.enabled ? 'ok' : ''}">${s.enabled ? '监听中' : '已停用'}</span></td>
-      <td><span class="badge ${s.store_original ? 'info' : ''}">${s.store_original ? '托管S3' : 'Zero-Retention'}</span></td>
+      <td><span class="badge ${s.enabled ? 'ok' : ''}">${esc(s.enabled ? t('listening') : t('paused'))}</span></td>
+      <td><span class="badge ${s.store_original ? 'info' : ''}">${esc(s.store_original ? t('hostedS3') : 'Zero-Retention')}</span></td>
       <td>
         <div class="row-actions">
-          <button class="sm" onclick="toggleSource(${s.id}, {enabled: ${!s.enabled}})">${s.enabled ? '停用' : '启用'}</button>
-          <button class="sm" onclick="openRulesEditor(${s.id})">过滤规则</button>
-          <button class="sm" ${caps.can_backfill ? '' : 'disabled title="需登录 MTProto 用户号"'} onclick="openBrowser(${s.id})">浏览勾选</button>
-          <button class="sm" ${caps.can_backfill ? '' : 'disabled title="仅 MTProto 用户号支持历史回溯"'} onclick="triggerBackfill(${s.id})">回溯历史</button>
-          <button class="sm" ${caps.can_chat_check ? '' : 'disabled title="需启用 Bot 或登录 MTProto"'} onclick="runCheck(${s.id})">巡检</button>
-          <button class="sm" onclick="toggleSource(${s.id}, {store_original: ${!s.store_original}})">${s.store_original ? '改零留存' : '改托管S3'}</button>
-          <button class="sm danger" onclick="deleteSource(${s.id})">删除</button>
+          <button class="sm" onclick="toggleSource(${s.id}, {enabled: ${!s.enabled}})">${esc(s.enabled ? t('btnDisable') : t('btnEnable'))}</button>
+          <button class="sm" onclick="openRulesEditor(${s.id})">${esc(t('btnRules'))}</button>
+          <button class="sm" ${caps.can_backfill ? '' : `disabled title="${esc(t('needMt'))}"`} onclick="openBrowser(${s.id})">${esc(t('btnBrowse'))}</button>
+          <button class="sm" ${caps.can_backfill ? '' : `disabled title="${esc(t('needMt'))}"`} onclick="triggerBackfill(${s.id})">${esc(t('btnBackfill'))}</button>
+          <button class="sm" ${caps.can_chat_check ? '' : `disabled title="${esc(t('needBotOrMt'))}"`} onclick="runCheck(${s.id})">${esc(t('btnCheck'))}</button>
+          <button class="sm" onclick="toggleSource(${s.id}, {store_original: ${!s.store_original}})">${esc(s.store_original ? t('btnToZero') : t('btnToS3'))}</button>
+          <button class="sm danger" onclick="deleteSource(${s.id})">${esc(t('btnDelete'))}</button>
         </div>
       </td>
     </tr>`;
   }).join('');
   wrap.innerHTML = `<table>
-    <thead><tr><th>群组 / 频道</th><th>默认标签</th><th>过滤规则</th><th>状态</th><th>存储策略</th><th>操作</th></tr></thead>
+    <thead><tr><th>${esc(t('thChat'))}</th><th>${esc(t('thTags'))}</th><th>${esc(t('thRules'))}</th><th>${esc(t('thStatus'))}</th><th>${esc(t('thStorage'))}</th><th>${esc(t('thActions'))}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
@@ -578,7 +1654,7 @@ function openRulesEditor(sourceId) {
   if (!s) return;
   editingRulesSourceId = sourceId;
   const r = s.filter_rules || {};
-  document.getElementById('rulesEditorTitle').textContent = `编辑过滤规则 · ${s.chat_title || s.chat_ref}`;
+  document.getElementById('rulesEditorTitle').textContent = t('editRulesOf', { name: s.chat_title || s.chat_ref });
   document.getElementById('ruleMediaKinds').value = (r.media_kinds && r.media_kinds.length === 1) ? r.media_kinds[0] : '';
   document.getElementById('ruleMinMb').value = r.min_file_mb ?? '';
   document.getElementById('ruleMaxMb').value = r.max_file_mb ?? '';
@@ -615,7 +1691,7 @@ async function saveFilterRules(e) {
   };
   try {
     await api(`/sources/${editingRulesSourceId}`, { method: 'PATCH', body: JSON.stringify({ filter_rules }) });
-    toast('过滤规则已保存');
+    toast(t('rulesSaved'));
     closeRulesEditor();
     await loadSources();
   } catch (err) { toast(err.message, false); }
@@ -627,7 +1703,7 @@ async function openBrowser(sourceId) {
   browseOffsetId = 0;
   browseItems = [];
   selectedMsgIds.clear();
-  document.getElementById('browserTitle').textContent = `浏览群消息 · ${(s && (s.chat_title || s.chat_ref)) || sourceId}`;
+  document.getElementById('browserTitle').textContent = t('browseOf', { name: (s && (s.chat_title || s.chat_ref)) || sourceId });
   document.getElementById('browserPanel').classList.remove('hidden');
   updateSelectedCount();
   await fetchBrowsePage(false);
@@ -668,14 +1744,16 @@ async function fetchBrowsePage(append) {
 function renderBrowseGrid() {
   const grid = document.getElementById('browserGrid');
   if (!browseItems.length) {
-    grid.innerHTML = '<p class="hint">当前条件下没有匹配的媒体消息。</p>';
+    grid.innerHTML = `<p class="hint">${esc(t('noBrowseItems'))}</p>`;
     return;
   }
   grid.innerHTML = browseItems.map(it => {
     const sizeMb = it.file_size ? (it.file_size / (1024 * 1024)).toFixed(1) + 'MB' : '-';
     const durStr = it.duration ? ` · ${it.duration}s` : '';
     const checked = selectedMsgIds.has(it.message_id) ? 'checked' : '';
-    const syncedBadge = it.already_synced ? '<span class="badge ok">已同步</span>' : '<span class="badge">未导入</span>';
+    const syncedBadge = it.already_synced
+      ? `<span class="badge ok">${esc(t('syncedBadge'))}</span>`
+      : `<span class="badge">${esc(t('unsyncedBadge'))}</span>`;
     return `<div class="hit-card">
       ${it.thumb_url ? `<img class="hit-thumb" src="${esc(it.thumb_url)}" alt="" loading="lazy" />` : `<div class="hit-thumb"></div>`}
       <div class="hit-body">
@@ -705,12 +1783,13 @@ function selectAllUnsynced() {
 }
 
 function updateSelectedCount() {
-  document.getElementById('importSelectedBtn').textContent = `导入选中项 (${selectedMsgIds.size})`;
+  const btn = document.getElementById('importSelectedBtn');
+  if (btn) btn.textContent = t('importSelected', { n: selectedMsgIds.size });
 }
 
 async function importSelected() {
   if (!browsingSourceId || !selectedMsgIds.size) {
-    toast('请先勾选至少一条消息', false);
+    toast(t('selectAtLeastOne'), false);
     return;
   }
   try {
@@ -718,7 +1797,11 @@ async function importSelected() {
       method: 'POST',
       body: JSON.stringify({ message_ids: Array.from(selectedMsgIds) }),
     });
-    toast(`导入完成：成功 ${(res.uploaded || []).length} 条，跳过 ${(res.skipped || []).length} 条，失败 ${(res.failed || []).length} 条`);
+    toast(t('importDone', {
+      ok: (res.uploaded || []).length,
+      skip: (res.skipped || []).length,
+      fail: (res.failed || []).length,
+    }));
     selectedMsgIds.clear();
     updateSelectedCount();
     await reloadBrowse();
@@ -749,7 +1832,7 @@ async function createSource(e) {
     document.getElementById('srcTags').value = '';
     document.getElementById('srcBackup').value = '';
     document.getElementById('srcEnabled').checked = false;
-    toast(enabled ? '已添加并开启监听' : '已添加（默认未开启监听，请在列表中手动启用）');
+    toast(enabled ? t('srcAddedOn') : t('srcAddedOff'));
     await refreshAll();
   } catch (err) { toast(err.message, false); }
 }
@@ -757,7 +1840,7 @@ async function createSource(e) {
 async function toggleSource(id, patch) {
   try {
     await api(`/sources/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
-    toast('已更新源配置');
+    toast(t('srcUpdated'));
     await loadSources();
   } catch (err) { toast(err.message, false); }
 }
@@ -765,7 +1848,7 @@ async function toggleSource(id, patch) {
 async function deleteSource(id) {
   try {
     await api(`/sources/${id}`, { method: 'DELETE' });
-    toast('已删除源');
+    toast(t('srcDeleted'));
     await refreshAll();
   } catch (err) { toast(err.message, false); }
 }
@@ -773,7 +1856,7 @@ async function deleteSource(id) {
 async function triggerBackfill(id) {
   try {
     const res = await api(`/sources/${id}/backfill`, { method: 'POST', body: JSON.stringify({}) });
-    toast(res.started ? '已启动历史回溯任务' : '该源已有回溯任务运行中');
+    toast(res.started ? t('backfillStarted') : t('backfillRunning'));
   } catch (err) { toast(err.message, false); }
 }
 
@@ -787,7 +1870,7 @@ async function loadItems() {
   const caps = (currentStatus && currentStatus.capabilities) || {};
   const wrap = document.getElementById('itemsWrap');
   if (!data.items.length) {
-    wrap.innerHTML = '<p class="hint" style="margin-top:14px;">暂无匹配的同步记录。</p>';
+    wrap.innerHTML = `<p class="hint" style="margin-top:14px;">${esc(t('noItems'))}</p>`;
     return;
   }
   const rows = data.items.map(it => {
@@ -805,29 +1888,29 @@ async function loadItems() {
       <td class="hint">${esc(it.error_message || '-')}</td>
       <td>
         <div class="row-actions">
-          ${it.status === 'failed' ? `<button class="sm" ${caps.can_backfill ? '' : 'disabled title="重试拉取需 MTProto 登录"'} onclick="retryItem(${it.id})">重试</button>` : ''}
-          ${it.asset_id && it.lifecycle !== 'excluded' ? `<button class="sm danger" onclick="excludeItem(${it.id})">排除</button>` : ''}
-          ${it.asset_id && it.lifecycle === 'excluded' ? `<button class="sm" onclick="restoreItem(${it.id})">恢复</button>` : ''}
+          ${it.status === 'failed' ? `<button class="sm" ${caps.can_backfill ? '' : `disabled title="${esc(t('needMt'))}"`} onclick="retryItem(${it.id})">${esc(t('btnRetry'))}</button>` : ''}
+          ${it.asset_id && it.lifecycle !== 'excluded' ? `<button class="sm danger" onclick="excludeItem(${it.id})">${esc(t('btnExclude'))}</button>` : ''}
+          ${it.asset_id && it.lifecycle === 'excluded' ? `<button class="sm" onclick="restoreItem(${it.id})">${esc(t('btnRestore'))}</button>` : ''}
         </div>
       </td>
     </tr>`;
   }).join('');
   wrap.innerHTML = `<table>
-    <thead><tr><th>ID</th><th>类型</th><th>引用与原消息链接</th><th>同步状态</th><th>生命周期</th><th>备注/错误</th><th>操作</th></tr></thead>
+    <thead><tr><th>ID</th><th>${esc(t('thType'))}</th><th>${esc(t('thRef'))}</th><th>${esc(t('thSyncSt'))}</th><th>${esc(t('thLifecycle'))}</th><th>${esc(t('thNote'))}</th><th>${esc(t('thActions'))}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
 
 async function retryItem(id) {
-  try { await api(`/items/${id}/retry`, { method: 'POST' }); toast('已重新提交'); await loadItems(); }
+  try { await api(`/items/${id}/retry`, { method: 'POST' }); toast(t('retried')); await loadItems(); }
   catch (err) { toast(err.message, false); }
 }
 async function excludeItem(id) {
-  try { await api(`/items/${id}/exclude`, { method: 'POST' }); toast('已从 CineVec 排除并清理向量'); await loadItems(); }
+  try { await api(`/items/${id}/exclude`, { method: 'POST' }); toast(t('excludedToast')); await loadItems(); }
   catch (err) { toast(err.message, false); }
 }
 async function restoreItem(id) {
-  try { await api(`/items/${id}/restore`, { method: 'POST' }); toast('已恢复资产'); await loadItems(); }
+  try { await api(`/items/${id}/restore`, { method: 'POST' }); toast(t('restoredToast')); await loadItems(); }
   catch (err) { toast(err.message, false); }
 }
 
@@ -835,7 +1918,7 @@ async function loadChecks() {
   const data = await api('/checks/logs?limit=30');
   const wrap = document.getElementById('checksWrap');
   if (!data.items.length) {
-    wrap.innerHTML = '<p class="hint" style="margin-top:14px;">暂无巡检日志。</p>';
+    wrap.innerHTML = `<p class="hint" style="margin-top:14px;">${esc(t('noChecks'))}</p>`;
     return;
   }
   const rows = data.items.map(c => {
@@ -843,7 +1926,7 @@ async function loadChecks() {
     const errs = (c.details && c.details.errors) || [];
     const summary = alerts.length
       ? alerts.map(a => `${a.type}: ${a.chat_ref || a.source_id}`).join('; ')
-      : (errs.length ? `${errs.length} 个错误` : '正常');
+      : (errs.length ? t('checkErrors', { n: errs.length }) : t('checkNormal'));
     return `<tr>
       <td class="mono">${esc((c.started_at || '').slice(0, 19).replace('T', ' '))}</td>
       <td>${c.sources_checked}</td>
@@ -856,7 +1939,7 @@ async function loadChecks() {
     </tr>`;
   }).join('');
   wrap.innerHTML = `<table>
-    <thead><tr><th>时间 (UTC)</th><th>群数</th><th>消息数</th><th>链接更新</th><th>标失效</th><th>恢复</th><th>自动排除</th><th>告警摘要</th></tr></thead>
+    <thead><tr><th>${esc(t('thTime'))}</th><th>${esc(t('thChats'))}</th><th>${esc(t('thMsgs'))}</th><th>${esc(t('thUrlUpd'))}</th><th>${esc(t('thInvalid'))}</th><th>${esc(t('thRestored'))}</th><th>${esc(t('thAutoExc'))}</th><th>${esc(t('thAlerts'))}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
@@ -864,7 +1947,7 @@ async function loadChecks() {
 async function runCheck(sourceId) {
   try {
     const res = await api('/checks/run', { method: 'POST', body: JSON.stringify({ source_id: sourceId }) });
-    toast(`巡检完成：检查 ${res.sources_checked} 群，标失效 ${res.marked_invalid}，链接更新 ${res.urls_updated}`);
+    toast(t('checkDone', { src: res.sources_checked, inv: res.marked_invalid, upd: res.urls_updated }));
     await refreshAll();
   } catch (err) { toast(err.message, false); }
 }
@@ -876,26 +1959,26 @@ async function runQuickSearch(e) {
   const top_n = Number(document.getElementById('searchTopN').value || 8);
   const sum = document.getElementById('searchSummary');
   const grid = document.getElementById('searchResults');
-  sum.textContent = '检索中...';
+  sum.textContent = t('searching');
   grid.innerHTML = '';
   try {
     const endpoint = mode === 'metadata' ? '/search/metadata' : '/search/text';
     const res = await api(endpoint, { method: 'POST', body: JSON.stringify({ query, top_n }) });
     const items = res.items || [];
-    sum.textContent = `共命中 ${items.length} 条结果（${mode === 'metadata' ? '标签 / 文案 / 文件名模糊匹配' : '向量语义匹配'}）`;
+    sum.textContent = t('searchHits', { n: items.length, mode: mode === 'metadata' ? t('searchModeMeta') : t('searchModeVec') });
     if (!items.length) return;
     grid.innerHTML = items.map(it => {
       const prev = (it.previews && it.previews[0]) || {};
       const imgUrl = prev.locator || it.video_cover_locator || it.cover_locator || '';
       const scoreText = typeof it.score === 'number'
-        ? `相似度 ${it.score.toFixed(3)}`
-        : ((it.matched_on && it.matched_on.length) ? `命中: ${it.matched_on.join(', ')}` : '元数据命中');
+        ? t('scoreFmt', { s: it.score.toFixed(3) })
+        : ((it.matched_on && it.matched_on.length) ? t('matchedOn', { m: it.matched_on.join(', ') }) : t('metaHit'));
       const ts = typeof prev.time_seconds === 'number' && prev.time_seconds > 0 ? ` · ${Math.round(prev.time_seconds)}s` : '';
       const link = it.source_url && it.source_url.startsWith('http')
-        ? `<a href="${esc(it.source_url)}" target="_blank" rel="noopener">直达原消息 ↗</a>` : '';
+        ? `<a href="${esc(it.source_url)}" target="_blank" rel="noopener">${esc(t('openOriginal'))}</a>` : '';
       const lcBadge = it.lifecycle && it.lifecycle !== 'active'
         ? `<span class="badge err">${esc(it.lifecycle_label || it.lifecycle)}</span>` : '';
-      const tagsHtml = (it.tags || []).slice(0, 6).map(t => `<span class="badge">${esc(t)}</span>`).join(' ');
+      const tagsHtml = (it.tags || []).slice(0, 6).map(tg => `<span class="badge">${esc(tg)}</span>`).join(' ');
       return `<div class="hit-card">
         ${imgUrl ? `<img class="hit-thumb" src="${esc(imgUrl)}" alt="" loading="lazy" />` : `<div class="hit-thumb"></div>`}
         <div class="hit-body">
@@ -908,7 +1991,7 @@ async function runQuickSearch(e) {
       </div>`;
     }).join('');
   } catch (err) {
-    sum.textContent = '检索失败：' + err.message;
+    sum.textContent = t('searchFailed', { msg: err.message });
     toast(err.message, false);
   }
 }
@@ -917,21 +2000,27 @@ async function loadConfig() {
   const c = await api('/config');
   document.getElementById('cfgBaseUrl').value = c.cinevec_base_url || '';
   document.getElementById('cfgCinevecToken').value = '';
-  document.getElementById('cfgCinevecToken').placeholder = c.has_cinevec_token ? `已配置 (${c.cinevec_token_masked})，留空不变` : '未配置，填入 pica_...';
-  document.getElementById('cfgCinevecStatus').textContent = c.has_cinevec_token ? '已配置 Token' : '未配置 Token';
+  document.getElementById('cfgCinevecToken').placeholder = c.has_cinevec_token
+    ? t('cfgKeepMasked', { m: c.cinevec_token_masked })
+    : t('cfgTokenUnset');
+  document.getElementById('cfgCinevecStatus').textContent = c.has_cinevec_token ? t('cfgTokenSet') : t('cfgTokenMissing');
   document.getElementById('cfgCinevecStatus').className = 'badge ' + (c.has_cinevec_token ? 'ok' : 'warn');
 
   document.getElementById('cfgBotToken').value = '';
-  document.getElementById('cfgBotToken').placeholder = c.has_bot_token ? `已配置 (${c.bot_token_masked})，留空不变` : '未配置（可选）';
+  document.getElementById('cfgBotToken').placeholder = c.has_bot_token
+    ? t('cfgKeepMasked', { m: c.bot_token_masked })
+    : t('notCfgOpt');
   document.getElementById('cfgAllowedUsers').value = (c.tg_allowed_user_ids || []).join(',');
-  document.getElementById('cfgBotStatus').textContent = c.has_bot_token ? '已配置' : '未配置';
+  document.getElementById('cfgBotStatus').textContent = c.has_bot_token ? t('cfgSet') : t('cfgUnset');
   document.getElementById('cfgBotStatus').className = 'badge ' + (c.has_bot_token ? 'ok' : '');
 
   document.getElementById('cfgApiId').value = c.tg_api_id ?? '';
   document.getElementById('cfgApiHash').value = '';
-  document.getElementById('cfgApiHash').placeholder = c.has_tg_api_hash ? `已配置 (${c.tg_api_hash_masked})，留空不变` : '可选';
+  document.getElementById('cfgApiHash').placeholder = c.has_tg_api_hash
+    ? t('cfgKeepMasked', { m: c.tg_api_hash_masked })
+    : t('optional');
   document.getElementById('cfgSessionName').value = c.tg_session_name || 'tg_user_session';
-  document.getElementById('cfgTelethonStatus').textContent = (c.tg_api_id && c.has_tg_api_hash) ? '已配置' : '未配置';
+  document.getElementById('cfgTelethonStatus').textContent = (c.tg_api_id && c.has_tg_api_hash) ? t('cfgSet') : t('cfgUnset');
   document.getElementById('cfgTelethonStatus').className = 'badge ' + ((c.tg_api_id && c.has_tg_api_hash) ? 'ok' : '');
 
   document.getElementById('cfgMinDisk').value = c.disk_min_free_gb ?? 10;
@@ -939,7 +2028,7 @@ async function loadConfig() {
   document.getElementById('cfgMaxFileMb').value = c.max_file_size_mb ?? 4096;
   document.getElementById('cfgCheckHours').value = c.default_check_interval_hours ?? 6;
   document.getElementById('cfgAutoExclude').value = c.auto_exclude_after_days ?? 0;
-  document.getElementById('cfgEnvPath').textContent = c.env_file ? `配置文件: ${c.env_file}` : '';
+  document.getElementById('cfgEnvPath').textContent = c.env_file ? t('envFileFmt', { p: c.env_file }) : '';
 }
 
 async function saveSettings(e) {
@@ -966,9 +2055,9 @@ async function saveSettings(e) {
   try {
     const res = await api('/config', { method: 'PATCH', body: JSON.stringify(payload) });
     if (res.warnings && res.warnings.length) {
-      toast('已保存，但有提示: ' + res.warnings.join('; '), false);
+      toast(t('savedWithWarn', { w: res.warnings.join('; ') }), false);
     } else {
-      toast('配置已保存并生效');
+      toast(t('savedOk'));
     }
     await loadConfig();
     await loadStatus();
@@ -978,7 +2067,7 @@ async function saveSettings(e) {
 async function clearBot() {
   try {
     await api('/config', { method: 'PATCH', body: JSON.stringify({ clear_bot_token: true }) });
-    toast('已清空并停用 Bot');
+    toast(t('botCleared'));
     await loadConfig();
     await loadStatus();
   } catch (err) { toast(err.message, false); }
@@ -987,7 +2076,7 @@ async function clearBot() {
 async function clearTelethon() {
   try {
     await api('/config', { method: 'PATCH', body: JSON.stringify({ clear_telethon: true }) });
-    toast('已清空 MTProto 配置');
+    toast(t('mtCleared'));
     await loadConfig();
     await loadStatus();
   } catch (err) { toast(err.message, false); }
@@ -1004,6 +2093,7 @@ async function refreshAll() {
   } catch (err) { toast(err.message, false); }
 }
 
+applyStaticI18n();
 refreshAll();
 </script>
 </body>
