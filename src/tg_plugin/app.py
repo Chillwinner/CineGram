@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import HTMLResponse, Response
 
 from tg_plugin.availability_checker import AvailabilityChecker
 from tg_plugin.backpressure import BackpressureController
 from tg_plugin.bot import TelegramBotRunner
-from tg_plugin.cinevec_client import CineVecClient
+from tg_plugin.cinevec_client import CineVecAPIError, CineVecClient
 from tg_plugin.config import PluginSettings, load_settings, mask_secret, save_env_updates
 from tg_plugin.ingest_pipeline import IngestPipeline
 from tg_plugin.models import (
@@ -34,8 +34,10 @@ _STATIC_INDEX = Path(__file__).resolve().parent / "static" / "index.html"
 _ALLOWED_PROXY_PREFIXES = (
     "/api/v1/previews/",
     "/api/v1/assets/",
+    "/api/v1/faces/",
     "/api/previews/",
     "/api/assets/",
+    "/api/faces/",
 )
 
 
@@ -78,6 +80,8 @@ def _rewrite_search_for_web(payload: Dict[str, Any]) -> Dict[str, Any]:
             row["video_cover_locator"] = _to_proxy_url(row["video_cover_locator"])
         if row.get("cover_locator"):
             row["cover_locator"] = _to_proxy_url(row["cover_locator"])
+        if row.get("matched_face_crop_locator"):
+            row["matched_face_crop_locator"] = _to_proxy_url(row["matched_face_crop_locator"])
         previews = []
         for prev in row.get("previews") or []:
             p = dict(prev)
@@ -567,6 +571,28 @@ def create_plugin_app(
         if not query:
             raise HTTPException(status_code=400, detail="Query cannot be empty")
         res = await cinevec_client.search_metadata(query)
+        return _rewrite_search_for_web(res)
+
+    @app.post("/search/face")
+    async def quick_search_face(
+        image: UploadFile = File(...),
+        face_index: Optional[int] = Form(None),
+        top_n: int = Form(8),
+        score_threshold: Optional[float] = Form(None),
+    ) -> Dict[str, Any]:
+        data = await image.read()
+        if not data:
+            raise HTTPException(status_code=400, detail="Image cannot be empty")
+        try:
+            res = await cinevec_client.search_face(
+                data,
+                filename=image.filename or "face.jpg",
+                face_index=face_index,
+                top_n=max(1, min(30, top_n)),
+                score_threshold=score_threshold,
+            )
+        except CineVecAPIError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
         return _rewrite_search_for_web(res)
 
     @app.get("/proxy/cinevec")

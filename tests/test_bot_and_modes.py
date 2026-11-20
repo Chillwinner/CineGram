@@ -398,3 +398,200 @@ async def test_bot_and_telethon_require_slash_s_space_to_search(tmp_path: Path):
         assert any("wrench.jpg" in r for r in tw_replies)
     finally:
         await store.close()
+
+
+@pytest.mark.asyncio
+async def test_face_search_commands_bot_telethon_and_proxy(tmp_path: Path):
+    from fastapi.testclient import TestClient
+
+    from tg_plugin.app import create_plugin_app
+    from tg_plugin.backpressure import BackpressureController
+    from tg_plugin.ingest_pipeline import IngestPipeline
+    from tg_plugin.models import (
+        format_search_hit_caption,
+        is_face_search_caption,
+        parse_face_search_index,
+    )
+    from tg_plugin.telethon_worker import TelethonWorker
+
+    assert is_face_search_caption("/f") is True
+    assert is_face_search_caption("/face 2") is True
+    assert is_face_search_caption("/f@mybot 2") is True
+    assert is_face_search_caption("/s") is False
+    assert is_face_search_caption("hello") is False
+
+    assert parse_face_search_index("/f") is None
+    assert parse_face_search_index("/f 1") == 0
+    assert parse_face_search_index("/f 2") == 1
+    assert parse_face_search_index("/face@mybot 3") == 2
+
+    cap = format_search_hit_caption(
+        {
+            "asset_id": "a9",
+            "display_name": "meeting.mp4",
+            "person_name": "张三",
+            "score": 0.912,
+            "previews": [{"time_seconds": 14.0}],
+        }
+    )
+    assert "人物: 张三" in cap
+    assert "0.912" in cap
+
+    face_calls: List[Optional[str]] = []
+
+    def cinevec_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/v1/health":
+            return httpx.Response(200, json={"status": "ok"})
+        if request.url.path == "/api/v1/search/face":
+            raw_body = request.content.decode("latin1", errors="ignore")
+            face_calls.append(raw_body)
+            return httpx.Response(
+                200,
+                json={
+                    "kind": "face",
+                    "selected_face_index": 1 if 'name="face_index"' in raw_body else 0,
+                    "detected_faces": [{"index": 0}, {"index": 1}],
+                    "items": [
+                        {
+                            "asset_id": "af1",
+                            "display_name": "portrait.jpg",
+                            "person_name": "张三",
+                            "score": 0.93,
+                            "matched_face_crop_locator": "/api/v1/faces/fc1/crop",
+                            "previews": [{"locator": "/api/v1/previews/af1/frames/0"}],
+                        }
+                    ],
+                },
+            )
+        return httpx.Response(200, json={})
+
+    settings = PluginSettings(
+        cinevec_base_url="http://127.0.0.1:8008",
+        cinevec_api_token="pica_face",
+        tg_bot_token="123456:FAKE_BOT_TOKEN",
+        tg_allowed_user_ids=[111],
+        plugin_data_dir=tmp_path / "data",
+        disk_min_free_gb=0.001,
+    )
+    store = StateStore(settings.db_path)
+    await store.init()
+    try:
+        cinevec = CineVecClient(
+            settings.cinevec_base_url,
+            settings.cinevec_api_token,
+            transport=httpx.MockTransport(cinevec_handler),
+        )
+        bp = BackpressureController(settings.tmp_dir, cinevec, disk_min_free_gb=0.001)
+        pipeline = IngestPipeline(settings, store, cinevec, bp)
+
+        bot = TelegramBotRunner(settings, store, cinevec, pipeline)
+        bot_replies: List[str] = []
+
+        class _FakeBotFile:
+            async def download_as_bytearray(self) -> bytearray:
+                return bytearray(b"fake-portrait-bytes")
+
+        async def _fake_get_file(_fid: str) -> _FakeBotFile:
+            return _FakeBotFile()
+
+        async def _bot_reply(txt: str, **_kw: Any) -> None:
+            bot_replies.append(txt)
+
+        bot_ctx = SimpleNamespace(args=["2"], bot=SimpleNamespace(get_file=_fake_get_file))
+        replied_photo_msg = SimpleNamespace(photo=[SimpleNamespace(file_id="f-rep", file_unique_id="u1")], document=None)
+        reply_update = SimpleNamespace(
+            effective_user=SimpleNamespace(id=111),
+            effective_chat=SimpleNamespace(id=111, type="private"),
+            message=SimpleNamespace(
+                text="/f 2",
+                reply_to_message=replied_photo_msg,
+                reply_text=_bot_reply,
+                reply_photo=_bot_reply,
+            ),
+        )
+        await bot._cmd_face(reply_update, bot_ctx)  # type: ignore[arg-type]
+        assert len(face_calls) == 1
+        assert 'name="face_index"' in (face_calls[0] or "")
+        assert any("检测到 2 张人脸" in r for r in bot_replies)
+
+        # Photo caption `/f` in _on_media triggers face search rather than ingest
+        caption_update = SimpleNamespace(
+            effective_user=SimpleNamespace(id=111),
+            effective_chat=SimpleNamespace(id=111, type="private"),
+            message=SimpleNamespace(
+                chat=SimpleNamespace(id=111, type="private"),
+                chat_id=111,
+                message_id=9,
+                caption="/f",
+                photo=[SimpleNamespace(file_id="f-cap", file_unique_id="u2")],
+                video=None,
+                document=None,
+                reply_text=_bot_reply,
+                reply_photo=_bot_reply,
+            ),
+        )
+        await bot._on_media(caption_update, bot_ctx)  # type: ignore[arg-type]
+        assert len(face_calls) == 2
+
+        # Telethon User Account: caption `/f` and reply `/f 2`
+        tw = TelethonWorker(settings, store, pipeline, cinevec=cinevec)
+        tw._authorized = True
+        tw_replies: List[str] = []
+
+        class _FakeClient:
+            async def download_media(self, _msg: Any, file: Any = None, **_kw: Any) -> Any:
+                if hasattr(file, "write"):
+                    file.write(b"tl-face-bytes")
+                return file
+
+        tw._client = _FakeClient()  # type: ignore[assignment]
+
+        async def _tl_reply(txt: str, **_kw: Any) -> None:
+            tw_replies.append(txt)
+
+        tl_photo_msg = SimpleNamespace(
+            id=80,
+            message="/f",
+            raw_text="/f",
+            out=True,
+            sender_id=111,
+            photo=SimpleNamespace(id=78),
+            is_reply=False,
+        )
+        await tw._on_new_message(SimpleNamespace(chat_id=999, message=tl_photo_msg, reply=_tl_reply))
+        assert len(face_calls) == 3
+
+        replied_tl = SimpleNamespace(id=81, photo=SimpleNamespace(id=79), document=None, media=SimpleNamespace())
+
+        async def _get_reply_msg() -> Any:
+            return replied_tl
+
+        tl_reply_msg = SimpleNamespace(
+            id=82,
+            message="/f 2",
+            raw_text="/f 2",
+            out=True,
+            sender_id=111,
+            photo=None,
+            is_reply=True,
+        )
+        await tw._on_new_message(
+            SimpleNamespace(chat_id=999, message=tl_reply_msg, reply=_tl_reply, get_reply_message=_get_reply_msg)
+        )
+        assert len(face_calls) == 4
+        assert any("检测到 2 张人脸" in r for r in tw_replies)
+
+        # FastAPI proxy /search/face
+        app = create_plugin_app(settings=settings, cinevec=cinevec, start_background=False)
+        with TestClient(app) as client:
+            resp = client.post(
+                "/search/face",
+                files={"image": ("face.jpg", b"jpeg-bytes", "image/jpeg")},
+                data={"face_index": "1", "top_n": "5"},
+            )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["items"][0]["person_name"] == "张三"
+            assert body["items"][0]["matched_face_crop_locator"].startswith("/proxy/cinevec?path=")
+    finally:
+        await store.close()

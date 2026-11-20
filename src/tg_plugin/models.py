@@ -128,6 +128,8 @@ class QuickSearchIn(BaseModel):
 
 _TEXT_SEARCH_RE = re.compile(r"^/s(?:@[A-Za-z0-9_]+)?[ \t]+(.+)$", re.IGNORECASE | re.DOTALL)
 _PHOTO_SEARCH_RE = re.compile(r"^/s(?:@[A-Za-z0-9_]+)?(?:$|[ \t]+.*)$", re.IGNORECASE | re.DOTALL)
+_FACE_SEARCH_RE = re.compile(r"^/(?:f|face)(?:@[A-Za-z0-9_]+)?(?:$|[ \t]+.*)$", re.IGNORECASE | re.DOTALL)
+_FACE_INDEX_RE = re.compile(r"^/(?:f|face)(?:@[A-Za-z0-9_]+)?[ \t]+(\d+)\b", re.IGNORECASE)
 
 
 def parse_text_search_query(text: Optional[str]) -> Optional[str]:
@@ -146,6 +148,25 @@ def is_photo_search_caption(text: Optional[str]) -> bool:
     return bool(_PHOTO_SEARCH_RE.match(raw))
 
 
+def is_face_search_caption(text: Optional[str]) -> bool:
+    """Match `/f`, `/face`, or `/f <n>` when used as photo caption or reply."""
+    raw = (text or "").strip()
+    return bool(_FACE_SEARCH_RE.match(raw))
+
+
+def parse_face_search_index(text: Optional[str]) -> Optional[int]:
+    """Parse 1-based `/f <n>` into 0-based face_index, or None if omitted."""
+    raw = (text or "").strip()
+    m = _FACE_INDEX_RE.match(raw)
+    if not m:
+        return None
+    try:
+        idx_1based = int(m.group(1))
+    except ValueError:
+        return None
+    return max(0, idx_1based - 1) if idx_1based >= 1 else None
+
+
 def format_search_hit_caption(item: Dict[str, Any], *, include_source_url: bool = False) -> str:
     """Format a CineVec search hit into a Telegram message caption."""
     aid = item.get("asset_id") or item.get("id")
@@ -157,7 +178,11 @@ def format_search_hit_caption(item: Dict[str, Any], *, include_source_url: bool 
     ts = first_prev.get("time_seconds")
     ts_str = f" · {int(ts)}s" if isinstance(ts, (int, float)) and ts > 0 else ""
     lc = item.get("lifecycle_label") or ""
-    caption = f"{name}\n相似度: {score_str}{ts_str}"
+    person_name = (item.get("person_name") or "").strip()
+    caption = f"{name}\n"
+    if person_name:
+        caption += f"人物: {person_name}\n"
+    caption += f"相似度: {score_str}{ts_str}"
     if lc and item.get("lifecycle") not in (None, "active"):
         caption += f"\n状态: {lc}"
     if item.get("description"):

@@ -16,7 +16,7 @@ from telethon.errors import (
 )
 from telethon.tl.types import DocumentAttributeVideo, MessageEmpty
 
-from tg_plugin.cinevec_client import CineVecClient
+from tg_plugin.cinevec_client import CineVecAPIError, CineVecClient
 from tg_plugin.config import PluginSettings
 from tg_plugin.ingest_pipeline import (
     IngestPipeline,
@@ -31,7 +31,9 @@ from tg_plugin.models import (
     MessageProbeResult,
     TelegramMediaEnvelope,
     format_search_hit_caption,
+    is_face_search_caption,
     is_photo_search_caption,
+    parse_face_search_index,
     parse_text_search_query,
 )
 from tg_plugin.state_store import StateStore
@@ -283,6 +285,26 @@ class TelethonWorker:
                     pass
             await event.reply(caption)
 
+    async def _run_telethon_face_search(self, event: Any, target_msg: Any, raw_text: str) -> None:
+        buf = BytesIO()
+        await self._client.download_media(target_msg, file=buf)
+        data = buf.getvalue()
+        if not data:
+            return
+        face_index = parse_face_search_index(raw_text)
+        try:
+            res = await self._cinevec.search_face(data, face_index=face_index, top_n=5)
+        except CineVecAPIError as exc:
+            await event.reply(f"人脸搜索不可用：{exc.message}")
+            return
+        await self._reply_search_results(event, res)
+        detected = res.get("detected_faces") or []
+        if len(detected) > 1:
+            selected = int(res.get("selected_face_index") or 0) + 1
+            await event.reply(
+                f"检测到 {len(detected)} 张人脸，当前按第 {selected} 张匹配；回复该图发送 `/f 2` 可切换指定人脸。"
+            )
+
     async def _maybe_handle_search_message(self, event: Any) -> bool:
         if self._cinevec is None or self._client is None:
             return False
@@ -291,6 +313,19 @@ class TelethonWorker:
             return False
 
         raw_text = getattr(msg, "message", None) or getattr(msg, "raw_text", None) or ""
+        is_image_msg = getattr(msg, "photo", None) is not None or (_infer_media_meta(msg) or {}).get("kind") == "image"
+
+        # 0) Photo/image sent with `/f` caption or reply with `/f` -> face search
+        if is_image_msg and is_face_search_caption(raw_text):
+            await self._run_telethon_face_search(event, msg, raw_text)
+            return True
+
+        if getattr(msg, "is_reply", False) and is_face_search_caption(raw_text):
+            replied = await event.get_reply_message()
+            replied_meta = _infer_media_meta(replied) if replied is not None else None
+            if replied is not None and (getattr(replied, "photo", None) is not None or (replied_meta or {}).get("kind") == "image"):
+                await self._run_telethon_face_search(event, replied, raw_text)
+                return True
 
         # 1) Photo sent with `/s` caption -> image search
         if getattr(msg, "photo", None) is not None and is_photo_search_caption(raw_text):

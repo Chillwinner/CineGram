@@ -16,7 +16,7 @@ from telegram.ext import (
     filters,
 )
 
-from tg_plugin.cinevec_client import CineVecClient
+from tg_plugin.cinevec_client import CineVecAPIError, CineVecClient
 from tg_plugin.config import PluginSettings
 from tg_plugin.ingest_pipeline import IngestPipeline
 from tg_plugin.media_grouper import MediaGroupBuffer
@@ -25,7 +25,9 @@ from tg_plugin.models import (
     MessageProbeResult,
     TelegramMediaEnvelope,
     format_search_hit_caption,
+    is_face_search_caption,
     is_photo_search_caption,
+    parse_face_search_index,
     parse_text_search_query,
 )
 from tg_plugin.state_store import StateStore
@@ -95,6 +97,8 @@ class TelegramBotRunner:
         app.add_handler(CommandHandler("whoami", self._cmd_whoami))
         app.add_handler(CommandHandler("s", self._cmd_search_text))
         app.add_handler(CommandHandler("m", self._cmd_search_meta))
+        app.add_handler(CommandHandler("f", self._cmd_face))
+        app.add_handler(CommandHandler("face", self._cmd_face))
         app.add_handler(CallbackQueryHandler(self._on_callback))
         app.add_handler(
             MessageHandler(
@@ -183,7 +187,8 @@ class TelegramBotRunner:
             "CineVec Telegram 插件已就绪：\n"
             "• `/s 关键词`（`/s` 后必须加空格）：语义搜图 / 搜视频帧\n"
             "• 发送带 `/s` 说明的图片（或回复图片发送 `/s`）：以图搜图\n"
-            "• `/m 关键词`：按标签/描述/文件名搜索\n"
+            "• 发送带 `/f` 说明的人像图片（或回复图片发送 `/f`）：以脸搜人（合影可用 `/f 2` 选第 2 张脸）\n"
+            "• `/m 关键词`：按标签/人物名/文件名搜索\n"
             "• 直接转发或发送图片/视频：入库到 CineVec 并实时跟踪进度\n"
             "• `/id`：查看当前 user_id 与 chat_id"
         )
@@ -252,6 +257,54 @@ class TelegramBotRunner:
         data = bytes(await tg_file.download_as_bytearray())
         res = await self._cinevec.search_image(data, top_n=5)
         await self._reply_search_results(update, res)
+
+    async def _search_by_face(
+        self,
+        update: Update,
+        file_obj: Any,
+        ctx: ContextTypes.DEFAULT_TYPE,
+        face_index: Optional[int] = None,
+    ) -> None:
+        if update.message is None:
+            return
+        tg_file = await ctx.bot.get_file(file_obj.file_id)
+        data = bytes(await tg_file.download_as_bytearray())
+        try:
+            res = await self._cinevec.search_face(data, face_index=face_index, top_n=5)
+        except CineVecAPIError as exc:
+            await update.message.reply_text(f"人脸搜索不可用：{exc.message}")
+            return
+        await self._reply_search_results(update, res)
+        detected = res.get("detected_faces") or []
+        if len(detected) > 1:
+            selected = int(res.get("selected_face_index") or 0) + 1
+            await update.message.reply_text(
+                f"检测到 {len(detected)} 张人脸，当前按第 {selected} 张匹配；"
+                f"回复该图发送 `/f 2` 可切换指定人脸。"
+            )
+
+    async def _cmd_face(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._is_allowed(update) or update.message is None:
+            return
+        replied = update.message.reply_to_message
+        file_obj = None
+        if replied is not None:
+            if getattr(replied, "photo", None):
+                file_obj = replied.photo[-1]
+            elif getattr(replied, "document", None) and (getattr(replied.document, "mime_type", "") or "").lower().startswith("image/"):
+                file_obj = replied.document
+        if file_obj is None:
+            await update.message.reply_text(
+                "用法：发送带 `/f` 说明的人像照片，或回复某张照片发送 `/f` 以脸搜人（合影可附序号如 `/f 2`）。"
+            )
+            return
+        raw_text = getattr(update.message, "text", None)
+        face_index = parse_face_search_index(raw_text)
+        if face_index is None and ctx.args and ctx.args[0].isdigit():
+            val = int(ctx.args[0])
+            if val >= 1:
+                face_index = val - 1
+        await self._search_by_face(update, file_obj, ctx, face_index=face_index)
 
     async def _reply_search_results(self, update: Update, res: Dict[str, Any]) -> None:
         if update.message is None:
@@ -326,6 +379,15 @@ class TelegramBotRunner:
             return
 
         caption = (msg.caption or "").strip()
+        if is_face_search_caption(caption):
+            face_file = None
+            if msg.photo:
+                face_file = msg.photo[-1]
+            elif msg.document and (msg.document.mime_type or "").lower().startswith("image/"):
+                face_file = msg.document
+            if face_file is not None:
+                await self._search_by_face(update, face_file, ctx, face_index=parse_face_search_index(caption))
+                return
         if msg.photo and is_photo_search_caption(caption):
             await self._search_by_photo(update, msg.photo[-1], ctx)
             return

@@ -21,6 +21,8 @@ def rewrite_v1_locator(locator: str) -> str:
         return "/api/v1/previews/" + locator[len("/api/previews/"):]
     if locator.startswith("/api/assets/"):
         return "/api/v1/assets/" + locator[len("/api/assets/"):]
+    if locator.startswith("/api/faces/"):
+        return "/api/v1/faces/" + locator[len("/api/faces/"):]
     return locator
 
 
@@ -229,6 +231,31 @@ class CineVecClient:
         client = self._ensure_client()
         resp = await client.post(
             "/api/v1/search/image",
+            data=data,
+            files={"image": (filename, image_bytes, "image/jpeg")},
+        )
+        self._raise_for_error(resp)
+        return resp.json()
+
+    async def search_face(
+        self,
+        image_bytes: bytes,
+        *,
+        filename: str = "face.jpg",
+        face_index: Optional[int] = None,
+        top_n: Optional[int] = None,
+        score_threshold: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        data: Dict[str, str] = {}
+        if face_index is not None:
+            data["face_index"] = str(face_index)
+        if top_n is not None:
+            data["top_n"] = str(top_n)
+        if score_threshold is not None:
+            data["score_threshold"] = str(score_threshold)
+        client = self._ensure_client()
+        resp = await client.post(
+            "/api/v1/search/face",
             data=data,
             files={"image": (filename, image_bytes, "image/jpeg")},
         )
