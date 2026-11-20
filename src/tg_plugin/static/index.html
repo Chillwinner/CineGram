@@ -132,6 +132,41 @@
     .toast.ok { border-color: rgba(34,197,94,0.5); }
     .toast.err { border-color: rgba(239,68,68,0.5); color: #fca5a5; }
     .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+
+    /* Onboarding & Spotlight Tour */
+    .ob-backdrop {
+      position: fixed; inset: 0; background: rgba(6, 8, 14, 0.72); z-index: 900;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+    .ob-modal {
+      width: min(600px, 100%); background: var(--panel); border: 1px solid var(--border);
+      border-radius: 14px; padding: 22px 24px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+    }
+    .ob-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .ob-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
+    .ob-desc { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+    .ob-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .ob-item {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-2);
+    }
+    .ob-item-main { font-size: 13px; font-weight: 600; }
+    .ob-item-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .ob-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .ob-popover {
+      position: fixed; z-index: 920; width: min(380px, calc(100vw - 24px));
+      background: var(--panel); border: 1px solid var(--accent); border-radius: 12px;
+      padding: 16px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    }
+    .ob-step-tag { font-size: 11px; color: #9ec0ff; font-weight: 600; margin-bottom: 4px; }
+    .ob-popover h3 { margin: 0 0 6px; font-size: 15px; }
+    .ob-popover p { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+    .ob-highlight {
+      position: relative; z-index: 910;
+      box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px rgba(79, 140, 255, 0.22) !important;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
@@ -149,6 +184,7 @@
         <option value="ko">한국어</option>
         <option value="es">Español</option>
       </select>
+      <button id="guideBtn" onclick="openOnboarding(false)" data-i18n="guideBtn">Guide</button>
       <button id="refreshAllBtn" onclick="refreshAll()" data-i18n="refreshStatus">Refresh</button>
       <a class="btn" href="/docs" target="_blank" rel="noopener">Swagger /docs</a>
     </div>
@@ -484,6 +520,38 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<!-- First-Run Onboarding Modal -->
+<div id="obBackdrop" class="ob-backdrop hidden" onclick="if(event.target===this) closeOnboarding(true)">
+  <div class="ob-modal" role="dialog" aria-modal="true" aria-labelledby="obTitle">
+    <div class="ob-head">
+      <div>
+        <h2 id="obTitle" data-i18n="obTitle">Welcome to CineGram</h2>
+      </div>
+      <button class="sm" onclick="closeOnboarding(true)" data-i18n="close">Close</button>
+    </div>
+    <p class="ob-desc" data-i18n="obIntro">Connect CineVec in 1 minute. Choose any ingestion path — TG_API_ID is completely optional.</p>
+    <div id="obChecklist" class="ob-list"></div>
+    <div class="ob-actions">
+      <button onclick="goOnboardingSettings()" data-i18n="obGoSettings">Open Settings</button>
+      <button class="primary" onclick="startOnboardingTour()" data-i18n="obStartTour">Start 4-Step Tour</button>
+    </div>
+  </div>
+</div>
+
+<!-- Spotlight Step Popover -->
+<div id="obPopover" class="ob-popover hidden" role="dialog" aria-modal="false">
+  <div id="obTourStepTag" class="ob-step-tag">1 / 4</div>
+  <h3 id="obTourTitle"></h3>
+  <p id="obTourDesc"></p>
+  <div class="ob-actions" style="justify-content: space-between;">
+    <button class="sm" onclick="endOnboardingTour()" data-i18n="obSkip">Skip</button>
+    <div style="display:flex;gap:8px;">
+      <button id="obPrevBtn" class="sm" onclick="prevTourStep()" data-i18n="obPrev">Back</button>
+      <button id="obNextBtn" class="sm primary" onclick="nextTourStep()" data-i18n="obNext">Next</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const LANG_STORAGE_KEY = 'cinegram_lang';
 const HTML_LANG_MAP = { en: 'en', zh: 'zh-CN', ja: 'ja', ko: 'ko', es: 'es' };
@@ -494,6 +562,38 @@ const I18N = {
     brandTitle: 'CineGram · CineVec Telegram Plugin',
     loading: 'Loading...',
     refreshStatus: 'Refresh',
+    guideBtn: 'Guide',
+    obTitle: 'Welcome to CineGram',
+    obIntro: 'Connect CineVec in 1 minute. Choose any ingestion path — TG_API_ID is completely optional.',
+    obGoSettings: 'Open Settings',
+    obStartTour: 'Start 4-Step Tour',
+    obSkip: 'Skip',
+    obPrev: 'Back',
+    obNext: 'Next',
+    obDone: 'Done',
+    obOkTag: 'Ready',
+    obNeedTag: 'Action needed',
+    obOptTag: 'Optional',
+    obCheckVecTitle: '1. CineVec Core & API Token',
+    obCheckVecOk: 'Connected to CineVec and API Token is configured.',
+    obCheckVecNeedToken: 'CineVec is reachable, but API Token is missing. Create a pica_... token in CineVec Settings.',
+    obCheckVecDown: 'Cannot reach CineVec Core. Check CINEVEC_BASE_URL in Settings.',
+    obCheckBotTitle: '2A. Telegram Bot (No TG_API_ID)',
+    obCheckBotOk: 'Bot is running: use /s (visual), /f (face), /m (text/tag) or forward media <= 20MB.',
+    obCheckBotOff: 'Optional: paste a Bot Token in Settings to search and forward media directly in Telegram.',
+    obCheckExpTitle: '2B. Telegram Desktop Export (No TG_API_ID)',
+    obCheckExpSub: 'Always available: export Photos + Video files + JSON (up to 4000MB) in Telegram Desktop and import in the Desktop Export tab.',
+    obCheckMtTitle: '2C. MTProto User Account (Optional)',
+    obCheckMtOk: 'Authorized: supports full history backfill, 4GB videos, and message-level availability checks.',
+    obCheckMtOff: 'Optional: only needed for automatic history backfill or direct 4GB channel downloads.',
+    obStep1Title: 'Credentials & API Token',
+    obStep1Desc: 'Start here: verify CineVec Base URL, paste your pica_... token, and optionally add a Bot Token or watch folder.',
+    obStep2Title: 'Desktop Export (Zero API_ID)',
+    obStep2Desc: 'No TG_API_ID? Export chat history as JSON + media from Telegram Desktop and import or auto-watch it here.',
+    obStep3Title: 'Groups / Channels',
+    obStep3Desc: 'Add @channel or -100... IDs, customize filter rules, or browse thumbnails and cherry-pick messages.',
+    obStep4Title: 'Quick Search',
+    obStep4Desc: 'Test vector or metadata search anytime and jump straight back to the original t.me message.',
     cardCinevec: 'CineVec Core',
     checkingConn: 'Checking connectivity...',
     cardBot: 'Telegram Bot (Optional)',
@@ -713,6 +813,38 @@ const I18N = {
     brandTitle: 'CineGram · CineVec Telegram 插件',
     loading: '加载中...',
     refreshStatus: '刷新状态',
+    guideBtn: '新手引导',
+    obTitle: '欢迎使用 CineGram',
+    obIntro: '1 分钟连上 CineVec 本体。以下几种导入方式任选其一，无需申请 TG_API_ID 也能正常使用。',
+    obGoSettings: '前往凭据配置',
+    obStartTour: '开始 4 步界面导览',
+    obSkip: '跳过',
+    obPrev: '上一步',
+    obNext: '下一步',
+    obDone: '完成',
+    obOkTag: '已就绪',
+    obNeedTag: '待配置',
+    obOptTag: '可选',
+    obCheckVecTitle: '1. CineVec 本体与 API Token',
+    obCheckVecOk: '已连通 CineVec 本体，且 API Token 已配置。',
+    obCheckVecNeedToken: '已连通 CineVec，但缺少 API Token。请去 CineVec 前端「设置 → API Token」签发 pica_... 并填入。',
+    obCheckVecDown: '暂未连上 CineVec 本体，请在「凭据与策略配置」核对 CINEVEC_BASE_URL。',
+    obCheckBotTitle: '2A. Telegram Bot（免 TG_API_ID）',
+    obCheckBotOk: 'Bot 运行中：可用 /s 搜画面、/f 搜人脸、/m 搜文案标签，或转发 ≤20MB 媒体入库。',
+    obCheckBotOff: '可选：在配置页填入 Bot Token 即可热启用，支持 Telegram 内随手搜索与转发入库。',
+    obCheckExpTitle: '2B. Telegram Desktop 官方导出导入（免 TG_API_ID）',
+    obCheckExpSub: '随时可用：桌面端导出勾选 JSON + 照片/视频（上限调至 4000MB），在「桌面导出导入」页直接导入或自动监听。',
+    obCheckMtTitle: '2C. MTProto 用户号（可选）',
+    obCheckMtOk: '已授权：支持历史消息全量回溯、4GB 大视频流式拉取与消息级存活巡检。',
+    obCheckMtOff: '可选：仅在需要自动回溯群历史或直连下载 4GB 大视频时才需填写 TG_API_ID。',
+    obStep1Title: '第 1 步：凭据与策略配置',
+    obStep1Desc: '先在这里确认 CineVec 地址、粘贴 pica_... Token，并按需填写 Bot Token 或导出监控目录。',
+    obStep2Title: '第 2 步：桌面导出导入（零门槛）',
+    obStep2Desc: '不想申请 TG_API_ID？用 Telegram Desktop 导出 JSON + 媒体到这里，一键扫描并导入。',
+    obStep3Title: '第 3 步：群组 / 频道管理',
+    obStep3Desc: '添加需要同步的群组或频道，设置大小/时长/关键词过滤规则，或先浏览缩略图再勾选导入。',
+    obStep4Title: '第 4 步：快捷检索',
+    obStep4Desc: '在这里直接测试向量或词法检索，点击结果即可跳回原 Telegram 消息。',
     cardCinevec: 'CineVec 本体',
     checkingConn: '正在检测连通性',
     cardBot: 'Telegram Bot（可选）',
@@ -932,6 +1064,38 @@ const I18N = {
     brandTitle: 'CineGram · CineVec Telegram プラグイン',
     loading: '読み込み中...',
     refreshStatus: '更新',
+    guideBtn: 'ガイド',
+    obTitle: 'CineGram へようこそ',
+    obIntro: '1分で CineVec と接続できます。TG_API_ID なしでも使える取り込みルートを用意しています。',
+    obGoSettings: '設定を開く',
+    obStartTour: '4ステップ案内を開始',
+    obSkip: 'スキップ',
+    obPrev: '戻る',
+    obNext: '次へ',
+    obDone: '完了',
+    obOkTag: '準備完了',
+    obNeedTag: '要設定',
+    obOptTag: '任意',
+    obCheckVecTitle: '1. CineVec 本体と API Token',
+    obCheckVecOk: 'CineVec に接続済み、API Token も設定されています。',
+    obCheckVecNeedToken: 'CineVec には到達できますが API Token が未設定です。CineVec 設定で pica_... を発行して貼り付けてください。',
+    obCheckVecDown: 'CineVec 本体に到達できません。設定の CINEVEC_BASE_URL を確認してください。',
+    obCheckBotTitle: '2A. Telegram Bot（TG_API_ID 不要）',
+    obCheckBotOk: 'Bot 稼働中：/s（画像・意味）、/f（顔）、/m（文字・タグ）や ≤20MB の転送取り込みが使えます。',
+    obCheckBotOff: '任意：設定に Bot Token を保存すると即時起動し、Telegram から検索・転送取り込みができます。',
+    obCheckExpTitle: '2B. Telegram Desktop エクスポート（TG_API_ID 不要）',
+    obCheckExpSub: '常時利用可能：Desktop で JSON + 写真/動画（上限 4000MB）を書き出し、「Desktop エクスポート」タブから取り込めます。',
+    obCheckMtTitle: '2C. MTProto ユーザーアカウント（任意）',
+    obCheckMtOk: '認証済み：過去履歴の一括取得、4GB 動画、メッセージ単位の生存確認に対応。',
+    obCheckMtOff: '任意：過去の自動バックフィルや 4GB 動画の直接取得が必要な場合のみ TG_API_ID を設定します。',
+    obStep1Title: '1. 認証情報とポリシー',
+    obStep1Desc: 'まず CineVec URL と pica_... Token を設定し、必要に応じて Bot Token や監視フォルダを追加します。',
+    obStep2Title: '2. Desktop エクスポート',
+    obStep2Desc: 'TG_API_ID が不要な取り込みルートです。result.json とメディアを指定して一括取り込みできます。',
+    obStep3Title: '3. グループ / チャンネル',
+    obStep3Desc: '同期対象を追加し、サイズ・長さ・キーワードのフィルタやサムネイル選択取り込みを行います。',
+    obStep4Title: '4. クイック検索',
+    obStep4Desc: 'ベクトル検索やメタデータ検索をテストし、元の t.me メッセージへ直接ジャンプできます。',
     cardCinevec: 'CineVec 本体',
     checkingConn: '接続を確認中...',
     cardBot: 'Telegram Bot（任意）',
@@ -1151,6 +1315,38 @@ const I18N = {
     brandTitle: 'CineGram · CineVec Telegram 플러그인',
     loading: '로딩 중...',
     refreshStatus: '새로고침',
+    guideBtn: '가이드',
+    obTitle: 'CineGram 시작 안내',
+    obIntro: '1분 만에 CineVec와 연결하세요. TG_API_ID 없이도 사용할 수 있는 경로를 제공합니다.',
+    obGoSettings: '설정 열기',
+    obStartTour: '4단계 둘러보기',
+    obSkip: '건너뛰기',
+    obPrev: '이전',
+    obNext: '다음',
+    obDone: '완료',
+    obOkTag: '준비됨',
+    obNeedTag: '설정 필요',
+    obOptTag: '선택',
+    obCheckVecTitle: '1. CineVec 본체 및 API Token',
+    obCheckVecOk: 'CineVec에 연결되었고 API Token도 설정되었습니다.',
+    obCheckVecNeedToken: 'CineVec 연결은 되었지만 API Token이 없습니다. CineVec 설정에서 pica_... 토큰을 발급해 입력하세요.',
+    obCheckVecDown: 'CineVec 본체에 연결할 수 없습니다. 설정에서 CINEVEC_BASE_URL을 확인하세요.',
+    obCheckBotTitle: '2A. Telegram Bot (TG_API_ID 불필요)',
+    obCheckBotOk: 'Bot 실행 중: /s(벡터), /f(얼굴), /m(텍스트/태그) 검색 및 ≤20MB 전달 업로드를 지원합니다.',
+    obCheckBotOff: '선택: 설정에 Bot Token을 저장하면 즉시 활성화되어 텔레그램에서 바로 검색/전달할 수 있습니다.',
+    obCheckExpTitle: '2B. Telegram Desktop 내보내기 (TG_API_ID 불필요)',
+    obCheckExpSub: '항상 사용 가능: Desktop에서 JSON + 사진/동영상(최대 4000MB)을 내보낸 뒤 여기에서 바로 가져올 수 있습니다.',
+    obCheckMtTitle: '2C. MTProto 사용자 계정 (선택)',
+    obCheckMtOk: '인증됨: 전체 기록 백필, 4GB 동영상, 메시지 단위 상태 점검을 지원합니다.',
+    obCheckMtOff: '선택: 자동 기록 백필이나 4GB 대용량 직접 다운로드가 필요할 때만 TG_API_ID를 입력하세요.',
+    obStep1Title: '1. 자격 증명 및 정책',
+    obStep1Desc: '먼저 CineVec 주소와 pica_... Token을 확인하고, 필요 시 Bot Token이나 감시 폴더를 설정하세요.',
+    obStep2Title: '2. Desktop 내보내기 가져오기',
+    obStep2Desc: 'TG_API_ID 없이 result.json과 미디어 폴더만으로 대용량 파일까지 안전하게 가져옵니다.',
+    obStep3Title: '3. 그룹 / 채널',
+    obStep3Desc: '대상을 추가하고 필터 규칙을 설정하거나 썸네일을 보고 원하는 항목만 골라 가져오세요.',
+    obStep4Title: '4. 빠른 검색',
+    obStep4Desc: '벡터 또는 메타데이터 검색을 테스트하고 원본 t.me 메시지로 바로 이동할 수 있습니다.',
     cardCinevec: 'CineVec 코어',
     checkingConn: '연결 확인 중...',
     cardBot: 'Telegram Bot (선택)',
@@ -1370,6 +1566,38 @@ const I18N = {
     brandTitle: 'CineGram · Plugin Telegram de CineVec',
     loading: 'Cargando...',
     refreshStatus: 'Actualizar',
+    guideBtn: 'Guía',
+    obTitle: 'Bienvenido a CineGram',
+    obIntro: 'Conecta CineVec en 1 minuto. Elige cualquier ruta de ingesta — TG_API_ID es totalmente opcional.',
+    obGoSettings: 'Ir a Configuración',
+    obStartTour: 'Iniciar Tour (4 pasos)',
+    obSkip: 'Omitir',
+    obPrev: 'Atrás',
+    obNext: 'Siguiente',
+    obDone: 'Listo',
+    obOkTag: 'Listo',
+    obNeedTag: 'Requiere acción',
+    obOptTag: 'Opcional',
+    obCheckVecTitle: '1. CineVec Core y API Token',
+    obCheckVecOk: 'Conectado a CineVec y API Token configurado.',
+    obCheckVecNeedToken: 'CineVec responde, pero falta el API Token. Crea un token pica_... en Configuración de CineVec.',
+    obCheckVecDown: 'No se puede conectar con CineVec. Revisa CINEVEC_BASE_URL en Configuración.',
+    obCheckBotTitle: '2A. Bot de Telegram (Sin TG_API_ID)',
+    obCheckBotOk: 'Bot activo: usa /s (vector), /f (rostros), /m (texto/etiquetas) o reenvía archivos <= 20MB.',
+    obCheckBotOff: 'Opcional: guarda un Bot Token en Configuración para buscar y reenviar medios desde Telegram.',
+    obCheckExpTitle: '2B. Exportación de Telegram Desktop (Sin TG_API_ID)',
+    obCheckExpSub: 'Siempre disponible: exporta JSON + fotos/videos (hasta 4000MB) en Desktop e impórtalos aquí.',
+    obCheckMtTitle: '2C. Cuenta MTProto (Opcional)',
+    obCheckMtOk: 'Autorizada: historial completo, videos de 4GB y verificación por mensaje.',
+    obCheckMtOff: 'Opcional: solo necesario para historial automático o descargas directas de 4GB.',
+    obStep1Title: '1. Credenciales y Políticas',
+    obStep1Desc: 'Empieza aquí: verifica la URL de CineVec, pega tu token pica_... y añade Bot o carpeta vigilada.',
+    obStep2Title: '2. Exportación Desktop',
+    obStep2Desc: '¿Sin TG_API_ID? Exporta result.json + medios desde Telegram Desktop e impórtalos aquí.',
+    obStep3Title: '3. Grupos / Canales',
+    obStep3Desc: 'Añade @canal o IDs -100..., configura filtros o elige miniaturas antes de importar.',
+    obStep4Title: '4. Búsqueda Rápida',
+    obStep4Desc: 'Prueba búsquedas vectoriales o por metadatos y salta directo al mensaje original en t.me.',
     cardCinevec: 'Núcleo CineVec',
     checkingConn: 'Comprobando conexión...',
     cardBot: 'Bot de Telegram (Opcional)',
@@ -2274,9 +2502,154 @@ async function loadExportStatus() {
   } catch {}
 }
 
+const ONBOARDING_STORAGE_KEY = 'cinegram_onboarding_v1_done';
+let obAutoShown = false;
+let obTourIndex = -1;
+
+const OB_TOUR_STEPS = [
+  { tab: 'settings', titleKey: 'obStep1Title', descKey: 'obStep1Desc' },
+  { tab: 'export', titleKey: 'obStep2Title', descKey: 'obStep2Desc' },
+  { tab: 'sources', titleKey: 'obStep3Title', descKey: 'obStep3Desc' },
+  { tab: 'search', titleKey: 'obStep4Title', descKey: 'obStep4Desc' },
+];
+
+function renderOnboardingChecklist() {
+  const st = currentStatus || {};
+  const vecOk = Boolean(st.cinevec_connected && st.token_configured);
+  const vecReachable = Boolean(st.cinevec_connected);
+  const botOk = Boolean(st.bot_running);
+  const mtOk = Boolean(st.telethon_authorized);
+
+  const rows = [
+    {
+      title: t('obCheckVecTitle'),
+      sub: vecOk ? t('obCheckVecOk') : (vecReachable ? t('obCheckVecNeedToken') : t('obCheckVecDown')),
+      badgeClass: vecOk ? 'ok' : (vecReachable ? 'warn' : 'err'),
+      badgeText: vecOk ? t('obOkTag') : t('obNeedTag'),
+    },
+    {
+      title: t('obCheckBotTitle'),
+      sub: botOk ? t('obCheckBotOk') : t('obCheckBotOff'),
+      badgeClass: botOk ? 'ok' : 'info',
+      badgeText: botOk ? t('obOkTag') : t('obOptTag'),
+    },
+    {
+      title: t('obCheckExpTitle'),
+      sub: t('obCheckExpSub'),
+      badgeClass: 'ok',
+      badgeText: t('obOkTag'),
+    },
+    {
+      title: t('obCheckMtTitle'),
+      sub: mtOk ? t('obCheckMtOk') : t('obCheckMtOff'),
+      badgeClass: mtOk ? 'ok' : 'info',
+      badgeText: mtOk ? t('obOkTag') : t('obOptTag'),
+    },
+  ];
+  const el = document.getElementById('obChecklist');
+  if (!el) return;
+  el.innerHTML = rows.map(r => `
+    <div class="ob-item">
+      <div>
+        <div class="ob-item-main">${esc(r.title)}</div>
+        <div class="ob-item-sub">${esc(r.sub)}</div>
+      </div>
+      <span class="badge ${r.badgeClass}" style="flex-shrink:0;">${esc(r.badgeText)}</span>
+    </div>
+  `).join('');
+}
+
+function openOnboarding(auto = false) {
+  if (auto) {
+    if (obAutoShown) return;
+    obAutoShown = true;
+  }
+  endOnboardingTour(false);
+  renderOnboardingChecklist();
+  document.getElementById('obBackdrop')?.classList.remove('hidden');
+}
+
+function closeOnboarding(markDone = true) {
+  document.getElementById('obBackdrop')?.classList.add('hidden');
+  if (markDone) {
+    try { localStorage.setItem(ONBOARDING_STORAGE_KEY, '1'); } catch {}
+  }
+}
+
+function goOnboardingSettings() {
+  closeOnboarding(true);
+  switchTab('settings');
+}
+
+function clearTourHighlight() {
+  document.querySelectorAll('.ob-highlight').forEach(el => el.classList.remove('ob-highlight'));
+}
+
+function renderTourStep() {
+  clearTourHighlight();
+  const pop = document.getElementById('obPopover');
+  if (obTourIndex < 0 || obTourIndex >= OB_TOUR_STEPS.length) {
+    pop?.classList.add('hidden');
+    return;
+  }
+  const step = OB_TOUR_STEPS[obTourIndex];
+  switchTab(step.tab);
+  const target = document.querySelector(`.tab[data-tab="${step.tab}"]`);
+  if (target) target.classList.add('ob-highlight');
+  document.getElementById('obTourStepTag').textContent = `${obTourIndex + 1} / ${OB_TOUR_STEPS.length}`;
+  document.getElementById('obTourTitle').textContent = t(step.titleKey);
+  document.getElementById('obTourDesc').textContent = t(step.descKey);
+  document.getElementById('obPrevBtn').disabled = obTourIndex === 0;
+  document.getElementById('obNextBtn').textContent = obTourIndex === OB_TOUR_STEPS.length - 1 ? t('obDone') : t('obNext');
+  pop.classList.remove('hidden');
+  if (target) {
+    const r = target.getBoundingClientRect();
+    const top = Math.min(window.innerHeight - 210, Math.max(12, r.bottom + 10));
+    const left = Math.min(window.innerWidth - 392, Math.max(12, r.left));
+    pop.style.top = top + 'px';
+    pop.style.left = left + 'px';
+  }
+}
+
+function startOnboardingTour() {
+  closeOnboarding(true);
+  obTourIndex = 0;
+  renderTourStep();
+}
+
+function prevTourStep() {
+  if (obTourIndex > 0) {
+    obTourIndex -= 1;
+    renderTourStep();
+  }
+}
+
+function nextTourStep() {
+  if (obTourIndex < OB_TOUR_STEPS.length - 1) {
+    obTourIndex += 1;
+    renderTourStep();
+  } else {
+    endOnboardingTour(true);
+  }
+}
+
+function endOnboardingTour(markDone = true) {
+  obTourIndex = -1;
+  clearTourHighlight();
+  document.getElementById('obPopover')?.classList.add('hidden');
+  if (markDone) {
+    try { localStorage.setItem(ONBOARDING_STORAGE_KEY, '1'); } catch {}
+  }
+}
+
 async function refreshAll() {
   try {
     await loadStatus();
+    if (obTourIndex >= 0) renderTourStep();
+    else if (!document.getElementById('obBackdrop')?.classList.contains('hidden')) renderOnboardingChecklist();
+    try {
+      if (!localStorage.getItem(ONBOARDING_STORAGE_KEY)) openOnboarding(true);
+    } catch {}
     const active = document.querySelector('.tab.active')?.dataset.tab || 'sources';
     if (active === 'sources') await loadSources();
     if (active === 'export') await loadExportStatus();

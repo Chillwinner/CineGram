@@ -68,15 +68,26 @@ CineGram 是 **[CineVec](https://github.com/Chillwinner/Cinevec)** 的官方 Tel
 
 ## 快速部署教程
 
+### 方式一：Docker 一键启动（推荐）
+
 ```bash
-# 1. 拉取代码并安装（Python 3.9+）
+git clone https://github.com/Chillwinner/CineGram.git
+cd CineGram
+docker compose up -d --build
+```
+
+启动后打开 **http://127.0.0.1:8018/**，内置新手引导会自动检测 CineVec 连接、提示填入 `pica_...` Token，并带你选择 **Bot 转发/搜索**、**Desktop 导出导入（支持 `./exports` 目录自动监听）** 或 **MTProto 用户号**。
+
+### 方式二：本地 Python 运行（3.9+）
+
+```bash
 git clone https://github.com/Chillwinner/CineGram.git
 cd CineGram
 python -m venv .venv
 source .venv/bin/activate        # Windows PowerShell 用: .\.venv\Scripts\Activate.ps1
 pip install -e .
 
-# 2. 启动独立 FastAPI 服务与轻量 Web 管理台（默认 8018 端口）
+# 启动独立 FastAPI 服务与轻量 Web 管理台（默认 8018 端口）
 python -m tg_plugin serve
 ```
 

@@ -1,0 +1,25 @@
+services:
+  cinegram:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PLUGIN_PORT:-8018}:8018"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PLUGIN_HOST: "0.0.0.0"
+      PLUGIN_PORT: "8018"
+      PLUGIN_DATA_DIR: "/app/data"
+      CINEVEC_BASE_URL: "${CINEVEC_BASE_URL:-http://host.docker.internal:8008}"
+      EXPORT_WATCH_DIR: "${EXPORT_WATCH_DIR:-/app/exports}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - cinegram_data:/app/data
+      - ./exports:/app/exports
+    restart: unless-stopped
+
+volumes:
+  cinegram_data:

@@ -68,15 +68,28 @@ Do you need to write code to customize CineGram? **Usually no — and when you d
 
 ## Quickstart Deployment
 
+### Option A: One-Command Docker (Recommended)
+
 ```bash
-# 1. Clone and install (Python 3.9+)
+git clone https://github.com/Chillwinner/CineGram.git
+cd CineGram
+docker compose up -d --build
+```
+
+Then open **http://127.0.0.1:8018/** — the built-in onboarding guide will walk you through checking your CineVec connection, pasting your `pica_...` token, and choosing **Bot**, **Desktop Export (`exports/` auto-watch)**, or **MTProto**.
+
+> Drop Telegram Desktop export folders (`result.json` + media) into `./exports` and CineGram auto-imports them with zero `TG_API_ID` needed.
+
+### Option B: Local Python (3.9+)
+
+```bash
 git clone https://github.com/Chillwinner/CineGram.git
 cd CineGram
 python -m venv .venv
 source .venv/bin/activate        # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 pip install -e .
 
-# 2. Start the standalone FastAPI service & lightweight Web Console (port 8018)
+# Start the standalone FastAPI service & lightweight Web Console (port 8018)
 python -m tg_plugin serve
 ```
 
