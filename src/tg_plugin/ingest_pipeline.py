@@ -16,13 +16,20 @@ from tg_plugin.state_store import StateStore
 _HASHTAG_RE = re.compile(r"#([\w\u4e00-\u9fff-]+)")
 
 
-def build_telegram_link(chat_id: int, message_id: int, chat_username: Optional[str] = None) -> str:
+def build_telegram_link(
+    chat_id: int,
+    message_id: int,
+    chat_username: Optional[str] = None,
+    chat_type: Optional[str] = None,
+) -> str:
     username = (chat_username or "").strip().lstrip("@")
     if username:
         return f"https://t.me/{username}/{message_id}"
     cid_str = str(chat_id)
     if cid_str.startswith("-100") and len(cid_str) > 4:
         return f"https://t.me/c/{cid_str[4:]}/{message_id}"
+    if chat_type in ("personal_chat", "saved_messages", "bot_chat") and chat_id > 0:
+        return f"tg://openmessage?user_id={chat_id}&message_id={message_id}"
     return f"tg://openmessage?chat_id={chat_id}&message_id={message_id}"
 
 
@@ -156,7 +163,7 @@ class IngestPipeline:
             except Exception:
                 remote = None
             if remote is not None:
-                source_url = build_telegram_link(env.chat_id, env.message_id, env.chat_username)
+                source_url = build_telegram_link(env.chat_id, env.message_id, env.chat_username, env.chat_type)
                 await self._store.upsert_synced_item(
                     {
                         "source_id": env.source_id,
@@ -241,7 +248,7 @@ class IngestPipeline:
                 try:
                     downloaded = await env.download_fn(dest)
                 except Exception as exc:
-                    source_url = build_telegram_link(env.chat_id, env.message_id, env.chat_username)
+                    source_url = build_telegram_link(env.chat_id, env.message_id, env.chat_username, env.chat_type)
                     await self._store.upsert_synced_item(
                         {
                             "source_id": env.source_id,
@@ -276,7 +283,7 @@ class IngestPipeline:
                     except Exception:
                         backup_url = None
 
-                source_url = build_telegram_link(env.chat_id, env.message_id, env.chat_username)
+                source_url = build_telegram_link(env.chat_id, env.message_id, env.chat_username, env.chat_type)
                 tags = list(dict.fromkeys([*env.default_tags, *extract_hashtags(env.caption)]))
                 if env.chat_title and f"tg:{env.chat_title}" not in tags:
                     tags.append(f"tg:{env.chat_title}")

@@ -180,6 +180,7 @@
 
   <nav class="tabs">
     <button class="tab active" data-tab="sources" onclick="switchTab('sources')" data-i18n="tabSources">Groups / Channels</button>
+    <button class="tab" data-tab="export" onclick="switchTab('export')" data-i18n="tabExport">Desktop Export</button>
     <button class="tab" data-tab="items" onclick="switchTab('items')" data-i18n="tabItems">Sync History</button>
     <button class="tab" data-tab="checks" onclick="switchTab('checks')" data-i18n="tabChecks">Availability Checks</button>
     <button class="tab" data-tab="search" onclick="switchTab('search')" data-i18n="tabSearch">Quick Search (Semantic / Lexical)</button>
@@ -281,6 +282,43 @@
         <button type="button" id="browseMoreBtn" class="sm hidden" onclick="loadMoreBrowse()" data-i18n="loadOlder">Load Older Messages</button>
       </div>
     </div>
+  </section>
+
+  <!-- Tab: Desktop Export -->
+  <section id="tab-export" class="panel hidden">
+    <div class="sec-box" style="margin-bottom:16px;">
+      <div class="sec-head"><h3 data-i18n="expGuideTitle">No api_id / No Admin Required · Telegram Desktop Export Importer</h3></div>
+      <p class="hint" data-i18n="expGuideBody">In Telegram Desktop, open any joined group or channel → Export chat history → tick Photos &amp; Video files, drag Size limit to 4000 MB, choose Machine-readable JSON, then paste the exported folder path below.</p>
+    </div>
+    <form onsubmit="startExportImport(event)" class="form-grid">
+      <label class="field" style="grid-column: span 2;">
+        <span data-i18n="expPathLabel">Export Folder or result.json Path</span>
+        <input id="expPath" type="text" data-i18n-placeholder="expPathPh" placeholder="/Users/you/Downloads/Telegram Desktop/ChatExport_2026-11-20" required />
+      </label>
+      <label class="field">
+        <span data-i18n="expUserLabel">Channel @username (optional, for public t.me links)</span>
+        <input id="expUsername" type="text" placeholder="optional" />
+      </label>
+      <label class="field">
+        <span data-i18n="expTagsLabel">Default Tags (comma-separated)</span>
+        <input id="expTags" type="text" data-i18n-placeholder="srcTagsPh" placeholder="e.g. tg,action" />
+      </label>
+      <div style="grid-column: 1 / -1;">
+        <label class="check-inline">
+          <input id="expStoreOrig" type="checkbox" /> <span data-i18n="srcStoreOrig">Store originals in S3 (Zero-Retention by default)</span>
+        </label>
+        <label class="check-inline" style="margin-left:16px;">
+          <input id="expDeleteAfter" type="checkbox" /> <span data-i18n="expDeleteLabel">Delete local exported photos/videos after upload completes</span>
+        </label>
+      </div>
+      <div style="grid-column: 1 / -1; display:flex; gap:10px; flex-wrap:wrap;">
+        <button type="button" onclick="previewExport()" data-i18n="expPreviewBtn">Preview Export</button>
+        <button type="submit" class="primary" data-i18n="expImportBtn">Start Import</button>
+        <button type="button" onclick="loadExportStatus()" data-i18n="refreshStatus">Refresh Status</button>
+      </div>
+    </form>
+    <div id="expPreviewWrap" style="margin-top:16px;"></div>
+    <div id="expStatusWrap" style="margin-top:16px;"></div>
   </section>
 
   <!-- Tab 2: Items -->
@@ -424,6 +462,15 @@
             <span data-i18n="cfgAutoExclude">Auto-Exclude After Invalid (days, 0 = off)</span>
             <input id="cfgAutoExclude" type="number" min="0" />
           </label>
+          <label class="field" style="grid-column: span 2;">
+            <span data-i18n="cfgWatchDir">Desktop Export Watch Folder (optional)</span>
+            <input id="cfgWatchDir" type="text" data-i18n-placeholder="optional" placeholder="Optional" />
+          </label>
+          <div style="display:flex;align-items:flex-end;">
+            <label class="check-inline">
+              <input id="cfgExportDelete" type="checkbox" /> <span data-i18n="expDeleteLabel">Delete local exported photos/videos after upload completes</span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -643,6 +690,23 @@ const I18N = {
     savedOk: 'Configuration saved and hot-reloaded',
     botCleared: 'Bot token cleared and stopped',
     mtCleared: 'MTProto credentials cleared',
+    tabExport: 'Desktop Export',
+    expGuideTitle: 'No api_id / No Admin Required · Telegram Desktop Export Importer',
+    expGuideBody: 'In Telegram Desktop, open any joined group or channel -> Export chat history -> tick Photos & Video files, drag Size limit to 4000 MB, choose Machine-readable JSON, then paste the folder path below.',
+    expPathLabel: 'Export Folder or result.json Path',
+    expPathPh: '/path/to/ChatExport_folder',
+    expUserLabel: 'Channel @username (optional)',
+    expTagsLabel: 'Default Tags (comma-separated)',
+    expDeleteLabel: 'Delete local exported files after upload completes',
+    expPreviewBtn: 'Preview Export',
+    expImportBtn: 'Start Import',
+    cfgWatchDir: 'Desktop Export Watch Folder (optional)',
+    expStartedToast: 'Desktop export import started in background',
+    expRunningToast: 'An export import task is already running',
+    expPreviewSummary: '{n} export(s): {img} photos, {vid} videos, {miss} missing media',
+    expStatusRunning: 'Importing...',
+    expStatusIdle: 'Idle',
+    expStatusFmt: 'Status: {st} · Uploaded: {up} · Skipped: {sk} · Missing: {mi} · Failed: {fa} · Deleted local: {dl}',
   },
   zh: {
     pageTitle: 'CineGram · CineVec Telegram 插件管理台',
@@ -845,6 +909,23 @@ const I18N = {
     savedOk: '配置已保存并生效',
     botCleared: '已清空并停用 Bot',
     mtCleared: '已清空 MTProto 配置',
+    tabExport: '桌面导出包导入',
+    expGuideTitle: '免 api_id / 免群管理员 · Telegram Desktop 导出包导入',
+    expGuideBody: '在官方 Telegram Desktop 打开任意已加入的群/频道 → 导出聊天记录（Export chat history）→ 勾选 Photos 与 Video files，体积滑块拉到 4000 MB，格式选 Machine-readable JSON，把导出目录路径贴到下方即可批量入库并保留原消息直达链接。',
+    expPathLabel: '导出目录或 result.json 路径',
+    expPathPh: '/Users/你的用户名/Downloads/Telegram Desktop/ChatExport_...',
+    expUserLabel: '频道 @username（可选，不填也能自动生成 t.me/c/ 直达链接）',
+    expTagsLabel: '默认附加标签（逗号分隔）',
+    expDeleteLabel: '上传完成后自动删除导出的本地照片/视频（省硬盘）',
+    expPreviewBtn: '预览扫描',
+    expImportBtn: '开始导入',
+    cfgWatchDir: '桌面导出包自动监控目录（可选，EXPORT_WATCH_DIR）',
+    expStartedToast: '已启动后台导出包导入任务',
+    expRunningToast: '已有导入任务正在运行',
+    expPreviewSummary: '共 {n} 个导出包：{img} 张图片、{vid} 个视频、{miss} 条缺少本地媒体文件',
+    expStatusRunning: '正在导入...',
+    expStatusIdle: '空闲',
+    expStatusFmt: '状态：{st} · 已上传：{up} · 已跳过/去重：{sk} · 缺文件：{mi} · 失败：{fa} · 已清理本地文件：{dl}',
   },
   ja: {
     pageTitle: 'CineGram · CineVec Telegram プラグイン管理',
@@ -1047,6 +1128,23 @@ const I18N = {
     savedOk: '設定を保存して反映しました',
     botCleared: 'Bot を停止・クリアしました',
     mtCleared: 'MTProto 設定をクリアしました',
+    tabExport: 'デスクトップ書き出し取込',
+    expGuideTitle: 'api_id 不要・管理者権限不要 · Telegram Desktop 書き出し取り込み',
+    expGuideBody: 'Telegram Desktop で履歴を書き出し（写真＋動画、上限 4000 MB、Machine-readable JSON）し、フォルダパスを下に入力して取り込みます。',
+    expPathLabel: '書き出しフォルダまたは result.json のパス',
+    expPathPh: '/path/to/ChatExport_folder',
+    expUserLabel: 'チャンネル @username（任意）',
+    expTagsLabel: '既定タグ（カンマ区切り）',
+    expDeleteLabel: 'アップロード完了後にローカルの書き出しファイルを自動削除',
+    expPreviewBtn: 'プレビュー',
+    expImportBtn: 'インポート開始',
+    cfgWatchDir: '書き出し自動監視フォルダ（任意）',
+    expStartedToast: 'バックグラウンドで取り込みを開始しました',
+    expRunningToast: '取り込みタスクが既に実行中です',
+    expPreviewSummary: '{n} 件: 画像 {img}・動画 {vid}・未同梱 {miss}',
+    expStatusRunning: '実行中...',
+    expStatusIdle: '待機中',
+    expStatusFmt: '状態: {st} · 取込: {up} · スキップ: {sk} · 欠損: {mi} · 失敗: {fa} · 削除: {dl}',
   },
   ko: {
     pageTitle: 'CineGram · CineVec Telegram 플러그인 콘솔',
@@ -1249,6 +1347,23 @@ const I18N = {
     savedOk: '설정이 저장되고 즉시 적용되었습니다',
     botCleared: 'Bot이 초기화 및 중지되었습니다',
     mtCleared: 'MTProto 설정이 초기화되었습니다',
+    tabExport: '데스크톱 내보내기',
+    expGuideTitle: 'api_id / 관리자 권한 불필요 · Telegram Desktop 내보내기 가져오기',
+    expGuideBody: 'Telegram Desktop에서 사진/동영상 포함(4000MB, Machine-readable JSON)으로 내보낸 폴더 경로를 아래에 입력하세요.',
+    expPathLabel: '내보내기 폴더 또는 result.json 경로',
+    expPathPh: '/path/to/ChatExport_folder',
+    expUserLabel: '채널 @username (선택)',
+    expTagsLabel: '기본 태그 (쉼표 구분)',
+    expDeleteLabel: '업로드 완료 후 로컬 미디어 파일 자동 삭제',
+    expPreviewBtn: '미리보기',
+    expImportBtn: '가져오기 시작',
+    cfgWatchDir: '자동 감시 폴더 (선택)',
+    expStartedToast: '백그라운드 가져오기를 시작했습니다',
+    expRunningToast: '이미 가져오기 작업이 실행 중입니다',
+    expPreviewSummary: '{n}개 내보내기: 사진 {img}, 동영상 {vid}, 누락 {miss}',
+    expStatusRunning: '실행 중...',
+    expStatusIdle: '대기',
+    expStatusFmt: '상태: {st} · 업로드: {up} · 건너뜀: {sk} · 누락: {mi} · 실패: {fa} · 삭제됨: {dl}',
   },
   es: {
     pageTitle: 'CineGram · Consola del Plugin Telegram para CineVec',
@@ -1451,6 +1566,23 @@ const I18N = {
     savedOk: 'Configuración guardada y recargada',
     botCleared: 'Bot limpiado y detenido',
     mtCleared: 'Credenciales MTProto limpiadas',
+    tabExport: 'Exportación Desktop',
+    expGuideTitle: 'Sin api_id ni permisos de admin · Importador de Telegram Desktop',
+    expGuideBody: 'En Telegram Desktop exporta el historial con Fotos y Vídeos (límite 4000 MB, formato JSON legible) e introduce abajo la ruta de la carpeta.',
+    expPathLabel: 'Carpeta de exportación o ruta a result.json',
+    expPathPh: '/ruta/al/ChatExport_folder',
+    expUserLabel: '@username del canal (opcional)',
+    expTagsLabel: 'Etiquetas por defecto (separadas por coma)',
+    expDeleteLabel: 'Eliminar archivos locales exportados tras subir',
+    expPreviewBtn: 'Previsualizar',
+    expImportBtn: 'Iniciar importación',
+    cfgWatchDir: 'Carpeta vigilada de exportaciones (opcional)',
+    expStartedToast: 'Importación iniciada en segundo plano',
+    expRunningToast: 'Ya hay una importación en curso',
+    expPreviewSummary: '{n} exportación(es): {img} fotos, {vid} vídeos, {miss} sin archivo',
+    expStatusRunning: 'Importando...',
+    expStatusIdle: 'Inactivo',
+    expStatusFmt: 'Estado: {st} · Subidos: {up} · Omitidos: {sk} · Faltantes: {mi} · Fallidos: {fa} · Borrados: {dl}',
   },
 };
 
@@ -1527,10 +1659,11 @@ async function api(url, opts = {}) {
 
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  ['sources', 'items', 'checks', 'search', 'settings'].forEach(tb => {
+  ['sources', 'export', 'items', 'checks', 'search', 'settings'].forEach(tb => {
     document.getElementById('tab-' + tb).classList.toggle('hidden', tb !== name);
   });
   if (name === 'sources') loadSources();
+  if (name === 'export') loadExportStatus();
   if (name === 'items') loadItems();
   if (name === 'checks') loadChecks();
   if (name === 'settings') loadConfig();
@@ -2028,6 +2161,8 @@ async function loadConfig() {
   document.getElementById('cfgMaxFileMb').value = c.max_file_size_mb ?? 4096;
   document.getElementById('cfgCheckHours').value = c.default_check_interval_hours ?? 6;
   document.getElementById('cfgAutoExclude').value = c.auto_exclude_after_days ?? 0;
+  document.getElementById('cfgWatchDir').value = c.export_watch_dir || '';
+  document.getElementById('cfgExportDelete').checked = Boolean(c.export_delete_after_upload);
   document.getElementById('cfgEnvPath').textContent = c.env_file ? t('envFileFmt', { p: c.env_file }) : '';
 }
 
@@ -2042,6 +2177,8 @@ async function saveSettings(e) {
     max_file_size_mb: Number(document.getElementById('cfgMaxFileMb').value),
     default_check_interval_hours: Number(document.getElementById('cfgCheckHours').value),
     auto_exclude_after_days: Number(document.getElementById('cfgAutoExclude').value),
+    export_watch_dir: document.getElementById('cfgWatchDir').value.trim(),
+    export_delete_after_upload: document.getElementById('cfgExportDelete').checked,
   };
   const ct = document.getElementById('cfgCinevecToken').value.trim();
   if (ct) payload.cinevec_api_token = ct;
@@ -2082,11 +2219,67 @@ async function clearTelethon() {
   } catch (err) { toast(err.message, false); }
 }
 
+async function previewExport() {
+  const path = document.getElementById('expPath').value.trim();
+  const chat_username = document.getElementById('expUsername').value.trim() || null;
+  if (!path) return;
+  try {
+    const res = await api('/exports/preview', { method: 'POST', body: JSON.stringify({ path, chat_username }) });
+    const wrap = document.getElementById('expPreviewWrap');
+    const summary = t('expPreviewSummary', { n: res.export_count, img: res.images, vid: res.videos, miss: res.missing_media });
+    const rows = (res.exports || []).map(ex => {
+      const linkHtml = ex.sample_link ? `<a href="${esc(ex.sample_link)}" target="_blank" rel="noreferrer">${esc(ex.sample_link)}</a>` : '-';
+      return `<tr><td>${esc(ex.chat_title)}</td><td class="mono">${esc(ex.chat_type || '')} (${esc(ex.chat_id)})</td><td>${ex.images} / ${ex.videos} / ${ex.missing_media}</td><td class="mono">${linkHtml}</td></tr>`;
+    }).join('');
+    const warnHtml = (res.warnings || []).map(w => `<div class="hint" style="color:#d97706;margin-top:6px;">${esc(w)}</div>`).join('');
+    wrap.innerHTML = `<div class="sec-box"><div><strong>${esc(summary)}</strong></div>${warnHtml}<table><thead><tr><th>Chat</th><th>ID / Type</th><th>Img / Vid / Missing</th><th>Sample Link</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  } catch (err) { toast(err.message, false); }
+}
+
+async function startExportImport(e) {
+  e.preventDefault();
+  const path = document.getElementById('expPath').value.trim();
+  const chat_username = document.getElementById('expUsername').value.trim() || null;
+  const default_tags = document.getElementById('expTags').value.split(',').map(s => s.trim()).filter(Boolean);
+  const store_original = document.getElementById('expStoreOrig').checked;
+  const delete_after_upload = document.getElementById('expDeleteAfter').checked;
+  try {
+    const res = await api('/exports/import', {
+      method: 'POST',
+      body: JSON.stringify({ path, chat_username, default_tags, store_original, delete_after_upload }),
+    });
+    toast(res.started ? t('expStartedToast') : t('expRunningToast'), Boolean(res.started));
+    await loadExportStatus();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function loadExportStatus() {
+  try {
+    const st = await api('/exports/status');
+    const wrap = document.getElementById('expStatusWrap');
+    const line = t('expStatusFmt', {
+      st: st.running ? t('expStatusRunning') : t('expStatusIdle'),
+      up: st.uploaded ?? 0,
+      sk: st.skipped ?? 0,
+      mi: st.missing_media ?? 0,
+      fa: st.failed ?? 0,
+      dl: st.deleted_files ?? 0,
+    });
+    wrap.innerHTML = `<div class="sec-box"><div class="mono">${esc(line)}</div>${st.last_error ? `<div class="hint" style="color:#dc2626;">${esc(st.last_error)}</div>` : ''}</div>`;
+    if (st.running) {
+      setTimeout(() => {
+        if (document.querySelector('.tab.active')?.dataset.tab === 'export') loadExportStatus();
+      }, 2000);
+    }
+  } catch {}
+}
+
 async function refreshAll() {
   try {
     await loadStatus();
     const active = document.querySelector('.tab.active')?.dataset.tab || 'sources';
     if (active === 'sources') await loadSources();
+    if (active === 'export') await loadExportStatus();
     if (active === 'items') await loadItems();
     if (active === 'checks') await loadChecks();
     if (active === 'settings') await loadConfig();

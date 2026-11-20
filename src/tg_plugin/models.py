@@ -21,6 +21,7 @@ class TelegramMediaEnvelope:
     media_group_id: Optional[str] = None
     chat_username: Optional[str] = None
     chat_title: Optional[str] = None
+    chat_type: Optional[str] = None
     caption: str = ""
     duration: Optional[int] = None
     source_id: Optional[int] = None
@@ -117,8 +118,25 @@ class ConfigPatchIn(BaseModel):
     max_file_size_mb: Optional[int] = None
     default_check_interval_hours: Optional[float] = None
     auto_exclude_after_days: Optional[int] = None
+    export_watch_dir: Optional[str] = None
+    export_delete_after_upload: Optional[bool] = None
     clear_bot_token: bool = False
     clear_telethon: bool = False
+
+
+class DesktopExportPreviewIn(BaseModel):
+    path: str
+    chat_username: Optional[str] = None
+
+
+class DesktopExportImportIn(BaseModel):
+    path: str
+    chat_username: Optional[str] = None
+    default_tags: List[str] = Field(default_factory=list)
+    store_original: bool = False
+    delete_after_upload: bool = False
+    filter_rules: Optional[FilterRules] = None
+    sync: bool = False
 
 
 class QuickSearchIn(BaseModel):

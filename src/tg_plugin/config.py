@@ -79,6 +79,8 @@ class PluginSettings(BaseModel):
 
     default_check_interval_hours: float = 6.0
     auto_exclude_after_days: int = 0
+    export_watch_dir: str = ""
+    export_delete_after_upload: bool = False
     env_file_path: Optional[Path] = None
 
     @property
@@ -134,5 +136,8 @@ def load_settings(env_file: Optional[Path] = None) -> PluginSettings:
         upload_timeout_seconds=max(30.0, float(os.getenv("UPLOAD_TIMEOUT_SECONDS", "600.0"))),
         default_check_interval_hours=max(0.05, float(os.getenv("DEFAULT_CHECK_INTERVAL_HOURS", "6.0"))),
         auto_exclude_after_days=max(0, int(os.getenv("AUTO_EXCLUDE_AFTER_DAYS", "0"))),
+        export_watch_dir=os.getenv("EXPORT_WATCH_DIR", "").strip(),
+        export_delete_after_upload=os.getenv("EXPORT_DELETE_AFTER_UPLOAD", "false").strip().lower()
+        in {"1", "true", "yes", "on"},
         env_file_path=resolved_env,
     )

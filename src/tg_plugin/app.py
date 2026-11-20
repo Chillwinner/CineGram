@@ -14,12 +14,15 @@ from tg_plugin.backpressure import BackpressureController
 from tg_plugin.bot import TelegramBotRunner
 from tg_plugin.cinevec_client import CineVecAPIError, CineVecClient
 from tg_plugin.config import PluginSettings, load_settings, mask_secret, save_env_updates
+from tg_plugin.desktop_export import DesktopExportImporter
 from tg_plugin.ingest_pipeline import IngestPipeline
 from tg_plugin.models import (
     BackfillIn,
     ChatProbeResult,
     CheckRunIn,
     ConfigPatchIn,
+    DesktopExportImportIn,
+    DesktopExportPreviewIn,
     ImportSelectedIn,
     MessageProbeResult,
     QuickSearchIn,
@@ -111,6 +114,8 @@ def _masked_config(cfg: PluginSettings) -> Dict[str, Any]:
         "max_file_size_mb": cfg.max_file_size_mb,
         "default_check_interval_hours": cfg.default_check_interval_hours,
         "auto_exclude_after_days": cfg.auto_exclude_after_days,
+        "export_watch_dir": cfg.export_watch_dir,
+        "export_delete_after_upload": cfg.export_delete_after_upload,
         "env_file": str(cfg.env_file_path) if cfg.env_file_path else None,
     }
 
@@ -137,6 +142,7 @@ def create_plugin_app(
         max_preprocess_inflight=cfg.max_preprocess_inflight,
     )
     pipeline = IngestPipeline(cfg, store, cinevec_client, backpressure)
+    export_importer = DesktopExportImporter(cfg, pipeline)
     telethon_worker = TelethonWorker(cfg, store, pipeline, cinevec=cinevec_client)
     bot_runner = TelegramBotRunner(cfg, store, cinevec_client, pipeline)
     active_inspector: TelegramInspector = inspector or _CompositeInspector(telethon_worker, bot_runner)
@@ -144,6 +150,7 @@ def create_plugin_app(
 
     stop_event = asyncio.Event()
     check_task_holder: Dict[str, Optional[asyncio.Task]] = {"task": None}
+    watch_task_holder: Dict[str, Optional[asyncio.Task]] = {"task": None}
 
     def _mode_and_caps() -> Dict[str, Any]:
         telethon_ok = bool(telethon_worker.status["authorized"])
@@ -182,6 +189,19 @@ def create_plugin_app(
             except Exception:
                 pass
 
+    async def _watch_export_loop() -> None:
+        while not stop_event.is_set():
+            if cfg.export_watch_dir.strip():
+                try:
+                    await export_importer.scan_watch_dir_once(stop_event=stop_event)
+                except Exception:
+                    pass
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=30.0)
+                break
+            except asyncio.TimeoutError:
+                pass
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         stop_event.clear()
@@ -197,17 +217,20 @@ def create_plugin_app(
             except Exception:
                 pass
             check_task_holder["task"] = asyncio.create_task(_periodic_check_loop())
+            watch_task_holder["task"] = asyncio.create_task(_watch_export_loop())
         try:
             yield
         finally:
             stop_event.set()
-            ctask = check_task_holder.get("task")
-            if ctask is not None:
-                ctask.cancel()
-                try:
-                    await ctask
-                except asyncio.CancelledError:
-                    pass
+            for holder in (check_task_holder, watch_task_holder):
+                task = holder.get("task")
+                if task is not None:
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+            await export_importer.stop()
             if start_background:
                 await bot_runner.stop()
                 await telethon_worker.stop()
@@ -225,6 +248,7 @@ def create_plugin_app(
     app.state.cinevec = cinevec_client
     app.state.backpressure = backpressure
     app.state.pipeline = pipeline
+    app.state.export_importer = export_importer
     app.state.telethon_worker = telethon_worker
     app.state.checker = checker
     app.state.bot_runner = bot_runner
@@ -261,6 +285,7 @@ def create_plugin_app(
             "backpressure": bp,
             "sources_total": len(sources),
             "items_by_status": counts,
+            "desktop_export": export_importer.status,
         }
 
     @app.get("/config")
@@ -343,6 +368,12 @@ def create_plugin_app(
         if body.auto_exclude_after_days is not None:
             cfg.auto_exclude_after_days = max(0, int(body.auto_exclude_after_days))
             env_updates["AUTO_EXCLUDE_AFTER_DAYS"] = str(cfg.auto_exclude_after_days)
+        if body.export_watch_dir is not None:
+            cfg.export_watch_dir = body.export_watch_dir.strip()
+            env_updates["EXPORT_WATCH_DIR"] = cfg.export_watch_dir
+        if body.export_delete_after_upload is not None:
+            cfg.export_delete_after_upload = bool(body.export_delete_after_upload)
+            env_updates["EXPORT_DELETE_AFTER_UPLOAD"] = "true" if cfg.export_delete_after_upload else "false"
 
         if env_updates and cfg.env_file_path is not None:
             save_env_updates(cfg.env_file_path, env_updates)
@@ -355,6 +386,7 @@ def create_plugin_app(
         )
         bot_runner.update_settings(cfg)
         telethon_worker.update_settings(cfg)
+        export_importer.update_settings(cfg)
 
         warnings: List[str] = []
         if start_background and bot_changed:
@@ -607,5 +639,52 @@ def create_plugin_app(
             raise HTTPException(status_code=400, detail="Disallowed proxy path")
         data = await cinevec_client.fetch_asset_bytes(cleaned)
         return Response(content=data, media_type="image/jpeg")
+
+    @app.post("/exports/preview")
+    async def preview_desktop_export(body: DesktopExportPreviewIn) -> Dict[str, Any]:
+        cleaned = body.path.strip()
+        if not cleaned:
+            raise HTTPException(status_code=400, detail="Export path cannot be empty")
+        try:
+            return export_importer.preview(cleaned, chat_username=body.chat_username)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/exports/import")
+    async def import_desktop_export(body: DesktopExportImportIn) -> Dict[str, Any]:
+        cleaned = body.path.strip()
+        if not cleaned:
+            raise HTTPException(status_code=400, detail="Export path cannot be empty")
+        try:
+            export_importer.preview(cleaned, chat_username=body.chat_username)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        if body.sync:
+            return await export_importer.import_path(
+                cleaned,
+                chat_username=body.chat_username,
+                default_tags=body.default_tags,
+                store_original=body.store_original,
+                delete_after_upload=body.delete_after_upload,
+                filter_rules=body.filter_rules,
+            )
+        started = export_importer.start_background_import(
+            cleaned,
+            chat_username=body.chat_username,
+            default_tags=body.default_tags,
+            store_original=body.store_original,
+            delete_after_upload=body.delete_after_upload,
+            filter_rules=body.filter_rules,
+        )
+        return {"started": started, "status": export_importer.status}
+
+    @app.get("/exports/status")
+    async def desktop_export_status() -> Dict[str, Any]:
+        return export_importer.status
 
     return app
