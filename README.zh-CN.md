@@ -99,3 +99,11 @@ python -m tg_plugin serve
    python -m tg_plugin login
    ```
 4. *（可选）* 运行自动化测试：`pytest -q`（切勿提交 `.env`、`data/` 与 `*.session`）。
+
+---
+
+## 更新日志
+
+### v1.0（`2026-11-20`）
+- **修复**：群聊内检索强制要求以 `/s ` 或 `/f ` 开头触发（[`src/tg_plugin/bot.py`](src/tg_plugin/bot.py)），避免群内正常聊天误触发搜图。
+- **新增**：`/f` 人脸搜人指令（支持回复图片与多人合影序号选择）、Telegram Desktop `result.json` 导出导入与目录监听、五语种 Web 管理台及 Docker Compose 一键部署。

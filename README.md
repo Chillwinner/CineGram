@@ -101,3 +101,11 @@ Open **http://127.0.0.1:8018/** (Swagger docs at `/docs`):
    python -m tg_plugin login
    ```
 4. *(Optional)* Run tests: `pytest -q`.
+
+---
+
+## Changelog
+
+### v1.0 (`2026-11-20`)
+- **Fixed**: Group chat search now requires an explicit `/s ` or `/f ` prefix (`src/tg_plugin/bot.py`) so normal group conversation no longer triggers unwanted searches.
+- **Added**: `/f` face search command (with reply-to-photo and multi-face index selection), Telegram Desktop `result.json` export importer & watch folder, 5-language Web console, and Docker Compose deployment.
