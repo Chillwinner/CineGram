@@ -133,7 +133,7 @@ def create_plugin_app(
         max_preprocess_inflight=cfg.max_preprocess_inflight,
     )
     pipeline = IngestPipeline(cfg, store, cinevec_client, backpressure)
-    telethon_worker = TelethonWorker(cfg, store, pipeline)
+    telethon_worker = TelethonWorker(cfg, store, pipeline, cinevec=cinevec_client)
     bot_runner = TelegramBotRunner(cfg, store, cinevec_client, pipeline)
     active_inspector: TelegramInspector = inspector or _CompositeInspector(telethon_worker, bot_runner)
     checker = AvailabilityChecker(cfg, store, cinevec_client, active_inspector)

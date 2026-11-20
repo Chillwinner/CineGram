@@ -20,7 +20,14 @@ from tg_plugin.cinevec_client import CineVecClient
 from tg_plugin.config import PluginSettings
 from tg_plugin.ingest_pipeline import IngestPipeline
 from tg_plugin.media_grouper import MediaGroupBuffer
-from tg_plugin.models import ChatProbeResult, MessageProbeResult, TelegramMediaEnvelope
+from tg_plugin.models import (
+    ChatProbeResult,
+    MessageProbeResult,
+    TelegramMediaEnvelope,
+    format_search_hit_caption,
+    is_photo_search_caption,
+    parse_text_search_query,
+)
 from tg_plugin.state_store import StateStore
 
 
@@ -101,7 +108,6 @@ class TelegramBotRunner:
                 self._on_media,
             )
         )
-        app.add_handler(MessageHandler(filters.UpdateType.MESSAGE & filters.TEXT & ~filters.COMMAND, self._on_text))
         await app.initialize()
         await app.start()
         if app.updater is not None:
@@ -175,8 +181,8 @@ class TelegramBotRunner:
             return
         await update.message.reply_text(
             "CineVec Telegram 插件已就绪：\n"
-            "• 直接发送文字或 `/s 关键词`：语义搜图 / 搜视频帧\n"
-            "• 发送带 `/s` 说明的图片：以图搜图\n"
+            "• `/s 关键词`（`/s` 后必须加空格）：语义搜图 / 搜视频帧\n"
+            "• 发送带 `/s` 说明的图片（或回复图片发送 `/s`）：以图搜图\n"
             "• `/m 关键词`：按标签/描述/文件名搜索\n"
             "• 直接转发或发送图片/视频：入库到 CineVec 并实时跟踪进度\n"
             "• `/id`：查看当前 user_id 与 chat_id"
@@ -196,9 +202,13 @@ class TelegramBotRunner:
         if update.message.reply_to_message and update.message.reply_to_message.photo:
             await self._search_by_photo(update, update.message.reply_to_message.photo[-1], ctx)
             return
-        query = " ".join(ctx.args).strip()
+        raw_text = getattr(update.message, "text", None)
+        if raw_text is not None:
+            query = parse_text_search_query(raw_text)
+        else:
+            query = " ".join(ctx.args).strip() or None
         if not query:
-            await update.message.reply_text("用法：`/s 跑步 逆光`，或回复一张图片发送 `/s` 以图搜图。")
+            await update.message.reply_text("用法：`/s 跑步 逆光`（`/s` 后必须加空格），或回复一张图片发送 `/s` 以图搜图。")
             return
         await self._reply_search_results(update, await self._cinevec.search_text(query, top_n=5))
 
@@ -232,12 +242,8 @@ class TelegramBotRunner:
             await update.message.reply_text(text, reply_markup=buttons)
 
     async def _on_text(self, update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not self._is_allowed(update) or update.message is None:
-            return
-        query = (update.message.text or "").strip()
-        if not query:
-            return
-        await self._reply_search_results(update, await self._cinevec.search_text(query, top_n=5))
+        # Plain text messages without `/s ` must not trigger search.
+        return
 
     async def _search_by_photo(self, update: Update, photo_size: Any, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if update.message is None:
@@ -256,19 +262,9 @@ class TelegramBotRunner:
             return
         for item in items:
             aid = item.get("asset_id") or item.get("id")
-            name = item.get("display_name") or aid
-            score = item.get("score")
-            score_str = f"{score:.3f}" if isinstance(score, (int, float)) else "-"
             previews = item.get("previews") or []
             first_prev = previews[0] if previews else {}
-            ts = first_prev.get("time_seconds")
-            ts_str = f" · {int(ts)}s" if isinstance(ts, (int, float)) and ts > 0 else ""
-            lc = item.get("lifecycle_label") or ""
-            caption = f"{name}\n相似度: {score_str}{ts_str}"
-            if lc and item.get("lifecycle") not in (None, "active"):
-                caption += f"\n状态: {lc}"
-            if item.get("description"):
-                caption += f"\n{item['description'][:120]}"
+            caption = format_search_hit_caption(item)
             buttons = self._build_buttons(
                 aid,
                 item.get("source_url") or "",
@@ -330,7 +326,7 @@ class TelegramBotRunner:
             return
 
         caption = (msg.caption or "").strip()
-        if msg.photo and caption.lower().startswith(("/s", "搜")):
+        if msg.photo and is_photo_search_caption(caption):
             await self._search_by_photo(update, msg.photo[-1], ctx)
             return
         await self._ingest_bot_message(msg, ctx, source=None, send_progress=True)

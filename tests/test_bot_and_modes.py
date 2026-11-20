@@ -257,3 +257,144 @@ def test_filter_rules_and_selective_browse_import_endpoints(tmp_path: Path):
         assert imp.status_code == 200
         assert imp.json()["accepted"] == 1
         assert imp.json()["batch_ids"] == ["b-sel"]
+
+
+@pytest.mark.asyncio
+async def test_bot_and_telethon_require_slash_s_space_to_search(tmp_path: Path):
+    from tg_plugin.backpressure import BackpressureController
+    from tg_plugin.ingest_pipeline import IngestPipeline
+    from tg_plugin.models import is_photo_search_caption, parse_text_search_query
+    from tg_plugin.telethon_worker import TelethonWorker
+
+    assert parse_text_search_query("sunset") is None
+    assert parse_text_search_query("/s") is None
+    assert parse_text_search_query("/s   ") is None
+    assert parse_text_search_query("/ssunset") is None
+    assert parse_text_search_query("/s sunset by sea") == "sunset by sea"
+    assert parse_text_search_query("/S@mybot sunset") == "sunset"
+
+    assert is_photo_search_caption("") is False
+    assert is_photo_search_caption("搜") is False
+    assert is_photo_search_caption("/something") is False
+    assert is_photo_search_caption("/s") is True
+    assert is_photo_search_caption("/s ") is True
+    assert is_photo_search_caption("/s wrench") is True
+
+    text_queries: List[str] = []
+    image_searches: List[bytes] = []
+
+    def cinevec_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/v1/health":
+            return httpx.Response(200, json={"status": "ok"})
+        if request.url.path == "/api/v1/search/text":
+            import json as _json
+            body = _json.loads(request.content.decode("utf-8"))
+            text_queries.append(body["query"])
+            return httpx.Response(
+                200,
+                json={"items": [{"asset_id": "a1", "display_name": "clip.mp4", "score": 0.88, "source_url": "https://t.me/c/1/2"}]},
+            )
+        if request.url.path == "/api/v1/search/image":
+            image_searches.append(request.content)
+            return httpx.Response(200, json={"items": [{"asset_id": "a2", "display_name": "wrench.jpg", "score": 0.91}]})
+        return httpx.Response(200, json={})
+
+    settings = PluginSettings(
+        cinevec_base_url="http://127.0.0.1:8008",
+        cinevec_api_token="pica_search",
+        tg_bot_token="123456:FAKE_BOT_TOKEN",
+        tg_allowed_user_ids=[111],
+        plugin_data_dir=tmp_path / "data",
+        disk_min_free_gb=0.001,
+    )
+    store = StateStore(settings.db_path)
+    await store.init()
+    try:
+        cinevec = CineVecClient(
+            settings.cinevec_base_url,
+            settings.cinevec_api_token,
+            transport=httpx.MockTransport(cinevec_handler),
+        )
+        bp = BackpressureController(settings.tmp_dir, cinevec, disk_min_free_gb=0.001)
+        pipeline = IngestPipeline(settings, store, cinevec, bp)
+
+        # 1) Bot checks
+        bot = TelegramBotRunner(settings, store, cinevec, pipeline)
+        bot_replies: List[str] = []
+
+        async def _bot_reply(txt: str, **_kw: Any) -> None:
+            bot_replies.append(txt)
+
+        def _make_bot_update(text: str):
+            return SimpleNamespace(
+                effective_user=SimpleNamespace(id=111),
+                effective_chat=SimpleNamespace(id=111, type="private"),
+                message=SimpleNamespace(
+                    text=text,
+                    reply_to_message=None,
+                    reply_text=_bot_reply,
+                ),
+            )
+
+        # Plain text must NOT trigger search
+        await bot._on_text(_make_bot_update("sunset"), SimpleNamespace())  # type: ignore[arg-type]
+        assert text_queries == []
+
+        # Bare /s without space+query must NOT search
+        await bot._cmd_search_text(_make_bot_update("/s"), SimpleNamespace(args=[]))  # type: ignore[arg-type]
+        assert text_queries == []
+        assert any("/s" in r for r in bot_replies)
+
+        # `/s sunset` triggers search
+        await bot._cmd_search_text(_make_bot_update("/s sunset"), SimpleNamespace(args=["sunset"]))  # type: ignore[arg-type]
+        assert text_queries == ["sunset"]
+
+        # 2) Telethon User Account checks
+        tw = TelethonWorker(settings, store, pipeline, cinevec=cinevec)
+        tw._authorized = True
+        tw_replies: List[str] = []
+
+        class _FakeClient:
+            async def download_media(self, _msg: Any, file: Any = None, **_kw: Any) -> Any:
+                if hasattr(file, "write"):
+                    file.write(b"fake-photo-bytes")
+                return file
+
+        tw._client = _FakeClient()  # type: ignore[assignment]
+
+        def _make_tl_event(text: str, *, out: bool, sender_id: int = 111, photo: Any = None):
+            async def _reply(txt: str, **_kw: Any) -> None:
+                tw_replies.append(txt)
+
+            msg = SimpleNamespace(
+                id=50,
+                message=text,
+                raw_text=text,
+                out=out,
+                sender_id=sender_id,
+                photo=photo,
+                is_reply=False,
+            )
+            return SimpleNamespace(chat_id=999, message=msg, reply=_reply)
+
+        # Normal chat / bare /s / missing space must NOT search
+        await tw._on_new_message(_make_tl_event("hello world", out=True))
+        await tw._on_new_message(_make_tl_event("/s", out=True))
+        await tw._on_new_message(_make_tl_event("/ssunset", out=True))
+        assert text_queries == ["sunset"]
+
+        # Unauthorized incoming `/s cat` must be ignored
+        await tw._on_new_message(_make_tl_event("/s cat", out=False, sender_id=999999))
+        assert text_queries == ["sunset"]
+
+        # Own account (`out=True`) `/s cat` triggers search
+        await tw._on_new_message(_make_tl_event("/s cat", out=True))
+        assert text_queries == ["sunset", "cat"]
+        assert any("clip.mp4" in r for r in tw_replies)
+
+        # Photo with `/s` caption triggers image search on user account
+        await tw._on_new_message(_make_tl_event("/s", out=True, photo=SimpleNamespace(id=77)))
+        assert len(image_searches) == 1
+        assert any("wrench.jpg" in r for r in tw_replies)
+    finally:
+        await store.close()

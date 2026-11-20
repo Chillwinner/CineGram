@@ -16,6 +16,7 @@ from telethon.errors import (
 )
 from telethon.tl.types import DocumentAttributeVideo, MessageEmpty
 
+from tg_plugin.cinevec_client import CineVecClient
 from tg_plugin.config import PluginSettings
 from tg_plugin.ingest_pipeline import (
     IngestPipeline,
@@ -25,7 +26,14 @@ from tg_plugin.ingest_pipeline import (
     propagate_media_group_captions,
 )
 from tg_plugin.media_grouper import MediaGroupBuffer
-from tg_plugin.models import ChatProbeResult, MessageProbeResult, TelegramMediaEnvelope
+from tg_plugin.models import (
+    ChatProbeResult,
+    MessageProbeResult,
+    TelegramMediaEnvelope,
+    format_search_hit_caption,
+    is_photo_search_caption,
+    parse_text_search_query,
+)
 from tg_plugin.state_store import StateStore
 
 _IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff"}
@@ -85,10 +93,12 @@ class TelethonWorker:
         settings: PluginSettings,
         store: StateStore,
         pipeline: IngestPipeline,
+        cinevec: Optional[CineVecClient] = None,
     ) -> None:
         self._settings = settings
         self._store = store
         self._pipeline = pipeline
+        self._cinevec = cinevec
         self._client: Optional[TelegramClient] = None
         self._stop = asyncio.Event()
         self._connected = False
@@ -243,8 +253,81 @@ class TelethonWorker:
             backup_copy_fn=_backup,
         )
 
+    def _is_search_allowed(self, msg: Any) -> bool:
+        if getattr(msg, "out", False):
+            return True
+        allowed = self._settings.tg_allowed_user_ids
+        if not allowed:
+            return False
+        sender_id = getattr(msg, "sender_id", None)
+        return sender_id is not None and int(sender_id) in allowed
+
+    async def _reply_search_results(self, event: Any, res: Dict[str, Any]) -> None:
+        items = (res.get("items") or [])[:5]
+        if not items:
+            await event.reply("没有找到匹配的结果。")
+            return
+        for item in items:
+            caption = format_search_hit_caption(item, include_source_url=True)
+            previews = item.get("previews") or []
+            first_prev = previews[0] if previews else {}
+            locator = first_prev.get("locator") or item.get("video_cover_locator")
+            if locator and self._cinevec is not None:
+                try:
+                    img_bytes = await self._cinevec.fetch_asset_bytes(locator)
+                    buf = BytesIO(img_bytes)
+                    buf.name = "preview.jpg"
+                    await event.reply(caption, file=buf)
+                    continue
+                except Exception:
+                    pass
+            await event.reply(caption)
+
+    async def _maybe_handle_search_message(self, event: Any) -> bool:
+        if self._cinevec is None or self._client is None:
+            return False
+        msg = getattr(event, "message", None)
+        if msg is None or not self._is_search_allowed(msg):
+            return False
+
+        raw_text = getattr(msg, "message", None) or getattr(msg, "raw_text", None) or ""
+
+        # 1) Photo sent with `/s` caption -> image search
+        if getattr(msg, "photo", None) is not None and is_photo_search_caption(raw_text):
+            buf = BytesIO()
+            await self._client.download_media(msg, file=buf)
+            data = buf.getvalue()
+            if data:
+                res = await self._cinevec.search_image(data, top_n=5)
+                await self._reply_search_results(event, res)
+            return True
+
+        # 2) Reply to a photo with `/s` -> image search
+        if getattr(msg, "is_reply", False) and is_photo_search_caption(raw_text):
+            replied = await event.get_reply_message()
+            replied_meta = _infer_media_meta(replied) if replied is not None else None
+            if replied is not None and (getattr(replied, "photo", None) is not None or (replied_meta or {}).get("kind") == "image"):
+                buf = BytesIO()
+                await self._client.download_media(replied, file=buf)
+                data = buf.getvalue()
+                if data:
+                    res = await self._cinevec.search_image(data, top_n=5)
+                    await self._reply_search_results(event, res)
+                return True
+
+        # 3) Text search requires `/s <query>` with whitespace after `/s`
+        query = parse_text_search_query(raw_text)
+        if query:
+            res = await self._cinevec.search_text(query, top_n=5)
+            await self._reply_search_results(event, res)
+            return True
+
+        return False
+
     async def _on_new_message(self, event: Any) -> None:
         if not self._authorized or self._client is None:
+            return
+        if await self._maybe_handle_search_message(event):
             return
         chat_id = int(event.chat_id) if event.chat_id is not None else None
         if chat_id is None:
